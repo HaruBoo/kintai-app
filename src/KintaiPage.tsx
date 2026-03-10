@@ -37,6 +37,13 @@ function KintaiPage() {
   const [clockOutH, setClockOutH] = useState(nowH)
   const [clockOutM, setClockOutM] = useState(nowM)
 
+  // 削除確認中の行番号（nullなら確認中なし）
+  const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null)
+
+  // 日付編集中の行番号と入力値
+  const [editDateIndex, setEditDateIndex] = useState<number | null>(null)
+  const [editDateValue, setEditDateValue] = useState('')
+
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(timer)
@@ -70,6 +77,33 @@ function KintaiPage() {
     if (weekday === '土') return 'row-saturday'
     if (weekday === '日') return 'row-sunday'
     return ''
+  }
+
+  // 日付セルをクリックしたとき：編集モードに入る
+  const handleDateClick = (index: number, currentDate: string) => {
+    // 日本語の日付（例: 2026/3/10）をISO形式（2026-03-10）に変換
+    const d = new Date(currentDate)
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    setEditDateIndex(index)
+    setEditDateValue(iso)
+  }
+
+  // 日付の変更を確定する
+  const handleDateSave = (index: number) => {
+    if (!editDateValue) { setEditDateIndex(null); return }
+    const d = new Date(editDateValue)
+    const newDate = d.toLocaleDateString('ja-JP')
+    const newWeekday = d.toLocaleDateString('ja-JP', { weekday: 'short' })
+    setRecords(records.map((r, i) =>
+      i === index ? { ...r, date: newDate, weekday: newWeekday } : r
+    ))
+    setEditDateIndex(null)
+  }
+
+  // 削除を実行する
+  const handleDelete = (index: number) => {
+    setRecords(records.filter((_, i) => i !== index))
+    setDeleteConfirmIndex(null)
   }
 
   const handleClockIn = () => {
@@ -153,17 +187,45 @@ function KintaiPage() {
       <table>
         <thead>
           <tr>
-            <th>日付</th><th>曜日</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>備考</th>
+            <th>日付</th><th>曜日</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>備考</th><th></th>
           </tr>
         </thead>
         <tbody>
           {records.length === 0 ? (
-            <tr><td colSpan={7} className="no-record">打刻データがありません</td></tr>
+            <tr><td colSpan={8} className="no-record">打刻データがありません</td></tr>
           ) : (
             records.map((r, i) => (
               <tr key={i} className={getRowClass(r.date, r.weekday)}>
-                <td>{r.date}</td><td>{r.weekday}</td><td>{r.clockIn}</td>
+                {/* 日付セル：クリックで編集モードに切り替わる */}
+                <td>
+                  {editDateIndex === i ? (
+                    <span className="date-edit">
+                      <input type="date" className="date-edit-input"
+                        value={editDateValue}
+                        onChange={e => setEditDateValue(e.target.value)}
+                      />
+                      <button className="btn-delete-yes" onClick={() => handleDateSave(i)}>確定</button>
+                      <button className="btn-delete-no" onClick={() => setEditDateIndex(null)}>取消</button>
+                    </span>
+                  ) : (
+                    <span className="editable-cell" onClick={() => handleDateClick(i, r.date)} title="クリックで編集">
+                      {r.date} ✏️
+                    </span>
+                  )}
+                </td>
+                <td>{r.weekday}</td><td>{r.clockIn}</td>
                 <td>{r.clockOut}</td><td>{r.breakTime}</td><td>{r.workTime}</td><td>{r.note}</td>
+                <td>
+                  {deleteConfirmIndex === i ? (
+                    // 確認中：はい/キャンセルを表示
+                    <span className="delete-confirm">
+                      <button className="btn-delete-yes" onClick={() => handleDelete(i)}>はい</button>
+                      <button className="btn-delete-no" onClick={() => setDeleteConfirmIndex(null)}>キャンセル</button>
+                    </span>
+                  ) : (
+                    <button className="btn-delete" onClick={() => setDeleteConfirmIndex(i)}>削除</button>
+                  )}
+                </td>
               </tr>
             ))
           )}

@@ -1,34 +1,91 @@
-body {
-  background-color: #b2ebf2;
-  font-family: sans-serif;
-  margin: 0;
-  padding: 0;
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
+
+/* ==========================================
+   カラー変数の定義（ライトモード）
+   ========================================== */
+.app {
+  --bg-page:        #b2ebf2;
+  --bg-container:   #ffffff;
+  --bg-form:        #f0fbfc;
+  --bg-row-even:    #f0fbfc;
+  --bg-row-sat:     #e3f2fd;
+  --bg-row-sun:     #fce4ec;
+  --bg-row-holiday: #fff3e0;
+  --bg-record:      #b2ebf2;
+  --text-primary:   #333333;
+  --text-heading:   #00838f;
+  --text-accent:    #00bcd4;
+  --text-sat:       #1565c0;
+  --text-sun:       #c62828;
+  --text-holiday:   #e65100;
+  --text-muted:     #aaaaaa;
+  --border-light:   #b2ebf2;
+  --shadow:         rgba(0, 150, 180, 0.25);
+  --btn-clockin-bg: #00bcd4;
+  --btn-clockin-hover: #0097a7;
+  --total-bg:       #e0f7fa;
+}
+
+/* ダークモードのカラー変数 */
+.app.dark {
+  --bg-page:        #0d1b2a;
+  --bg-container:   #1b2a3b;
+  --bg-form:        #162233;
+  --bg-row-even:    #1f3044;
+  --bg-row-sat:     #1a2a4a;
+  --bg-row-sun:     #3a1a2a;
+  --bg-row-holiday: #3a2a10;
+  --bg-record:      #1a3040;
+  --text-primary:   #e0e0e0;
+  --text-heading:   #4dd0e1;
+  --text-accent:    #00bcd4;
+  --text-sat:       #64b5f6;
+  --text-sun:       #ef9a9a;
+  --text-holiday:   #ffcc80;
+  --text-muted:     #607d8b;
+  --border-light:   #2a4060;
+  --shadow:         rgba(0, 0, 0, 0.5);
+  --btn-clockin-bg: #0097a7;
+  --btn-clockin-hover: #00838f;
+  --total-bg:       #1a3a40;
+}
+
+/* ==========================================
+   全体レイアウト
+   ========================================== */
+.app {
+  min-height: 100vh;
+  background-color: var(--bg-page);
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  min-height: 100vh;
+  font-family: sans-serif;
+  transition: background-color 0.3s;
 }
 
-/* テーブルがあるので横幅を広げます */
 .container {
   width: 760px;
   margin: 60px 0;
-  background-color: white;
+  background-color: var(--bg-container);
   border-radius: 16px;
   padding: 40px;
-  box-shadow: 0 6px 20px rgba(0, 150, 180, 0.25);
+  box-shadow: 0 6px 20px var(--shadow);
+  color: var(--text-primary);
+  transition: background-color 0.3s, color 0.3s;
 }
 
-/* ナビゲーションタブ */
+/* ==========================================
+   ナビゲーション
+   ========================================== */
 .nav {
   display: flex;
+  align-items: center;
   gap: 8px;
   margin-bottom: 32px;
-  border-bottom: 2px solid #b2ebf2;
+  border-bottom: 2px solid var(--border-light);
   padding-bottom: 0;
 }
 
-/* タブボタン（非選択時） */
 .nav-tab {
   padding: 10px 28px;
   font-size: 16px;
@@ -36,92 +93,47 @@ body {
   background: none;
   border: none;
   border-bottom: 3px solid transparent;
-  color: #90a4ae;
+  color: var(--text-muted);
   cursor: pointer;
   border-radius: 0;
   transition: color 0.2s;
   margin-bottom: -2px;
 }
 
-/* タブボタン（選択中） */
 .nav-tab-active {
-  color: #00bcd4;
-  border-bottom: 3px solid #00bcd4;
+  color: var(--text-accent);
+  border-bottom: 3px solid var(--text-accent);
 }
 
-/* 交通費ページのタイトル */
-.page-title {
-  color: #00838f;
-  font-size: 20px;
-  margin-bottom: 24px;
-}
+/* モード切り替えボタンをナビ右端に寄せる */
+.nav-spacer { flex: 1; }
 
-/* 交通費の入力フォーム */
-.kotsu-form {
-  background-color: #f0fbfc;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 32px;
-}
-
-/* フォームの1行（ラベル＋入力欄） */
-.form-row {
+.mode-toggle {
   display: flex;
+  gap: 4px;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
 }
 
-/* ラベル */
-.form-row label {
-  width: 90px;
-  font-weight: bold;
-  color: #00838f;
-  flex-shrink: 0;
-}
-
-/* テキスト入力欄 */
-.form-input {
-  flex: 1;
-  padding: 8px 12px;
-  font-size: 15px;
-  border: 2px solid #b2ebf2;
-  border-radius: 8px;
-  outline: none;
-  color: #333;
-}
-
-.form-input:focus {
-  border-color: #00bcd4;
-}
-
-/* 追加ボタン */
-.btn-add {
-  width: 100%;
-  padding: 12px;
-  font-size: 16px;
-  font-weight: bold;
-  background-color: #00bcd4;
-  color: white;
-  border: none;
-  border-radius: 8px;
+.mode-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  background: none;
+  color: var(--text-muted);
   cursor: pointer;
-  transition: background-color 0.2s;
-  margin-top: 8px;
+  transition: all 0.2s;
 }
 
-.btn-add:hover {
-  background-color: #0097a7;
+.mode-btn-active {
+  background-color: var(--text-accent);
+  color: white;
+  border-color: var(--text-accent);
 }
 
-/* 合計行 */
-.total-row td {
-  font-weight: bold;
-  background-color: #e0f7fa;
-  color: #00838f;
-}
-
-/* 日付・時刻エリア */
+/* ==========================================
+   時計・Swellロゴ
+   ========================================== */
 .clock-section {
   text-align: center;
   margin-bottom: 40px;
@@ -129,12 +141,9 @@ body {
 
 .date {
   font-size: 20px;
-  color: #00838f;
+  color: var(--text-heading);
   margin: 0 0 8px 0;
 }
-
-/* Swellのおしゃれな表示（筆記体） */
-@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
 
 .swell {
   font-size: 64px;
@@ -148,12 +157,45 @@ body {
   background-clip: text;
 }
 
-/* ボタンエリア */
+/* ==========================================
+   打刻ボタン
+   ========================================== */
 .button-group {
   display: flex;
   gap: 20px;
   justify-content: center;
   margin-bottom: 40px;
+}
+
+.punch-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-select-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.time-select {
+  font-size: 18px;
+  padding: 8px 4px;
+  border: 2px solid var(--text-accent);
+  border-radius: 8px;
+  color: var(--text-heading);
+  background-color: var(--bg-container);
+  cursor: pointer;
+  width: 64px;
+  text-align: center;
+}
+
+.time-colon {
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--text-heading);
 }
 
 button {
@@ -166,54 +208,17 @@ button {
   transition: background-color 0.2s, color 0.2s, border-color 0.2s;
 }
 
-/* 出勤・退勤の入力欄＋ボタンをまとめる縦並びの箱 */
-.punch-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-/* 時・分セレクトを横並びにする箱 */
-.time-select-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* 時・分のセレクトボックス */
-.time-select {
-  font-size: 18px;
-  padding: 8px 4px;
-  border: 2px solid #00bcd4;
-  border-radius: 8px;
-  color: #00838f;
-  background-color: white;
-  cursor: pointer;
-  width: 64px;
-  text-align: center;
-}
-
-/* 時と分の間の「:」 */
-.time-colon {
-  font-size: 20px;
-  font-weight: bold;
-  color: #00838f;
-}
-
 .btn-clockin {
-  background-color: #00bcd4;
+  background-color: var(--btn-clockin-bg);
   color: white;
 }
 
-.btn-clockin:hover {
-  background-color: #0097a7;
-}
+.btn-clockin:hover { background-color: var(--btn-clockin-hover); }
 
 .btn-clockout {
-  background-color: white;
-  color: #00bcd4;
-  border: 2px solid #00bcd4;
+  background-color: var(--bg-container);
+  color: var(--text-accent);
+  border: 2px solid var(--text-accent);
 }
 
 .btn-clockout:hover {
@@ -222,7 +227,9 @@ button {
   border-color: #546e7a;
 }
 
-/* テーブル見出しとボタンを横並びにする */
+/* ==========================================
+   テーブル共通
+   ========================================== */
 .table-header {
   display: flex;
   justify-content: space-between;
@@ -230,19 +237,123 @@ button {
   margin-bottom: 16px;
 }
 
-/* テーブルの見出し */
 h2 {
-  color: #00838f;
+  color: var(--text-heading);
   font-size: 18px;
   margin: 0;
 }
 
-/* CSVダウンロードボタン */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+thead tr { background-color: var(--text-accent); color: white; }
+
+th { padding: 10px 8px; text-align: center; }
+
+td {
+  padding: 10px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+}
+
+tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
+
+.no-record { color: var(--text-muted); padding: 24px; }
+
+/* 曜日・祝日の行色 */
+.row-saturday td { background-color: var(--bg-row-sat); color: var(--text-sat); }
+.row-sunday   td { background-color: var(--bg-row-sun); color: var(--text-sun); }
+.row-holiday  td { background-color: var(--bg-row-holiday); color: var(--text-holiday); }
+
+/* 合計行 */
+.total-row td {
+  font-weight: bold;
+  background-color: var(--total-bg);
+  color: var(--text-heading);
+}
+
+/* 削除ボタン */
+.btn-delete {
+  padding: 4px 10px;
+  font-size: 12px;
+  background-color: transparent;
+  color: #e57373;
+  border: 1px solid #e57373;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-delete:hover {
+  background-color: #e57373;
+  color: white;
+}
+
+/* 削除確認のはい/キャンセルボタン */
+.delete-confirm {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.btn-delete-yes {
+  padding: 4px 8px;
+  font-size: 12px;
+  background-color: #e57373;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-delete-no {
+  padding: 4px 8px;
+  font-size: 12px;
+  background-color: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* 日付編集エリア */
+.date-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+}
+
+.date-edit-input {
+  font-size: 12px;
+  padding: 2px 4px;
+  border: 1px solid var(--text-accent);
+  border-radius: 4px;
+  background-color: var(--bg-container);
+  color: var(--text-primary);
+  width: 120px;
+}
+
+/* クリックで編集できるセル */
+.editable-cell {
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.editable-cell:hover {
+  color: var(--text-accent);
+}
+
+/* ダウンロードボタン */
 .btn-download {
   padding: 8px 20px;
   font-size: 14px;
   font-weight: bold;
-  background-color: #00838f;
+  background-color: var(--text-heading);
   color: white;
   border: none;
   border-radius: 8px;
@@ -250,61 +361,63 @@ h2 {
   transition: background-color 0.2s;
 }
 
-.btn-download:hover {
-  background-color: #006064;
+.btn-download:hover { background-color: #006064; }
+
+/* ==========================================
+   交通費フォーム
+   ========================================== */
+.page-title {
+  color: var(--text-heading);
+  font-size: 20px;
+  margin-bottom: 24px;
 }
 
-/* テーブル全体 */
-table {
-  width: 100%;
-  border-collapse: collapse; /* セルの境界線を重ねる */
-  font-size: 14px;
-}
-
-/* テーブルのヘッダー行 */
-thead tr {
-  background-color: #00bcd4;
-  color: white;
-}
-
-/* ヘッダーのセル */
-th {
-  padding: 10px 8px;
-  text-align: center;
-}
-
-/* データのセル */
-td {
-  padding: 10px 8px;
-  text-align: center;
-  border-bottom: 1px solid #e0f7fa; /* 薄い水色の区切り線 */
-}
-
-/* 1行おきに背景色をつける */
-tbody tr:nth-child(even) {
-  background-color: #f0fbfc;
-}
-
-/* データなしのメッセージ */
-.no-record {
-  color: #aaa;
+.kotsu-form {
+  background-color: var(--bg-form);
+  border-radius: 12px;
   padding: 24px;
+  margin-bottom: 32px;
 }
 
-/* 土曜日の行：水色 */
-.row-saturday td {
-  background-color: #e3f2fd;
-  color: #1565c0;
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
-/* 日曜日の行：ピンク */
-.row-sunday td {
-  background-color: #fce4ec;
-  color: #c62828;
+.form-row label {
+  width: 90px;
+  font-weight: bold;
+  color: var(--text-heading);
+  flex-shrink: 0;
 }
 
-/* 祝日の行：薄い赤（日曜と同じ色系） */
-.row-holiday td {
-  background-color: #fff3e0;
-  color: #e65100;
+.form-input {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 15px;
+  border: 2px solid var(--border-light);
+  border-radius: 8px;
+  outline: none;
+  color: var(--text-primary);
+  background-color: var(--bg-container);
 }
+
+.form-input:focus { border-color: var(--text-accent); }
+
+.btn-add {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  background-color: var(--text-accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 8px;
+}
+
+.btn-add:hover { background-color: var(--btn-clockin-hover); }

@@ -16,6 +16,9 @@ function KotsuPage() {
   })
 
   const [dateISO, setDateISO] = useState(todayISO())
+  const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null)
+  const [editDateIndex, setEditDateIndex] = useState<number | null>(null)
+  const [editDateValue, setEditDateValue] = useState('')
   const [fromInput, setFromInput] = useState('')
   const [toInput, setToInput] = useState('')
   const [amountInput, setAmountInput] = useState('')
@@ -23,6 +26,25 @@ function KotsuPage() {
   useEffect(() => {
     localStorage.setItem('kotsu-records', JSON.stringify(records))
   }, [records])
+
+  const handleDateClick = (index: number, currentDate: string) => {
+    const d = new Date(currentDate)
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    setEditDateIndex(index)
+    setEditDateValue(iso)
+  }
+
+  const handleDateSave = (index: number) => {
+    if (!editDateValue) { setEditDateIndex(null); return }
+    const newDate = new Date(editDateValue).toLocaleDateString('ja-JP')
+    setRecords(records.map((r, i) => i === index ? { ...r, date: newDate } : r))
+    setEditDateIndex(null)
+  }
+
+  const handleDelete = (index: number) => {
+    setRecords(records.filter((_, i) => i !== index))
+    setDeleteConfirmIndex(null)
+  }
 
   const handleAdd = () => {
     if (!fromInput || !toInput || !amountInput) {
@@ -93,17 +115,43 @@ function KotsuPage() {
       <table>
         <thead>
           <tr>
-            <th>日付</th><th>出発駅</th><th>到着駅</th><th>費用（円）</th>
+            <th>日付</th><th>出発駅</th><th>到着駅</th><th>費用（円）</th><th></th>
           </tr>
         </thead>
         <tbody>
           {records.length === 0 ? (
-            <tr><td colSpan={4} className="no-record">交通費データがありません</td></tr>
+            <tr><td colSpan={5} className="no-record">交通費データがありません</td></tr>
           ) : (
             records.map((r, i) => (
               <tr key={i}>
-                <td>{r.date}</td><td>{r.from}</td><td>{r.to}</td>
+                <td>
+                  {editDateIndex === i ? (
+                    <span className="date-edit">
+                      <input type="date" className="date-edit-input"
+                        value={editDateValue}
+                        onChange={e => setEditDateValue(e.target.value)}
+                      />
+                      <button className="btn-delete-yes" onClick={() => handleDateSave(i)}>確定</button>
+                      <button className="btn-delete-no" onClick={() => setEditDateIndex(null)}>取消</button>
+                    </span>
+                  ) : (
+                    <span className="editable-cell" onClick={() => handleDateClick(i, r.date)} title="クリックで編集">
+                      {r.date} ✏️
+                    </span>
+                  )}
+                </td>
+                <td>{r.from}</td><td>{r.to}</td>
                 <td>¥{Number(r.amount).toLocaleString()}</td>
+                <td>
+                  {deleteConfirmIndex === i ? (
+                    <span className="delete-confirm">
+                      <button className="btn-delete-yes" onClick={() => handleDelete(i)}>はい</button>
+                      <button className="btn-delete-no" onClick={() => setDeleteConfirmIndex(null)}>キャンセル</button>
+                    </span>
+                  ) : (
+                    <button className="btn-delete" onClick={() => setDeleteConfirmIndex(i)}>削除</button>
+                  )}
+                </td>
               </tr>
             ))
           )}
@@ -111,7 +159,7 @@ function KotsuPage() {
         {records.length > 0 && (
           <tfoot>
             <tr className="total-row">
-              <td colSpan={3}>合計</td>
+              <td colSpan={4}>合計</td>
               <td>¥{total.toLocaleString()}</td>
             </tr>
           </tfoot>
