@@ -112,6 +112,7 @@ function KotsuPage() {
         <button className="btn-download" onClick={handleDownloadCSV}>ダウンロードする</button>
       </div>
 
+      <div className="table-scroll">
       <table>
         <thead>
           <tr>
@@ -165,6 +166,7 @@ function KotsuPage() {
           </tfoot>
         )}
       </table>
+      </div>
     </div>
   )
 }

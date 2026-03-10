@@ -64,7 +64,8 @@
 }
 
 .container {
-  width: 760px;
+  width: 100%;
+  max-width: 760px;
   margin: 60px 0;
   background-color: var(--bg-container);
   border-radius: 16px;
@@ -72,6 +73,7 @@
   box-shadow: 0 6px 20px var(--shadow);
   color: var(--text-primary);
   transition: background-color 0.3s, color 0.3s;
+  box-sizing: border-box;
 }
 
 /* ==========================================
@@ -421,3 +423,52 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
 }
 
 .btn-add:hover { background-color: var(--btn-clockin-hover); }
+
+/* ==========================================
+   スマホ対応（画面幅600px以下）
+   ========================================== */
+@media (max-width: 600px) {
+
+  /* コンテナの余白を小さくする */
+  .container {
+    margin: 0;
+    border-radius: 0;
+    padding: 20px 16px;
+    min-height: 100vh;
+  }
+
+  /* ナビを縦に折り返せるようにする */
+  .nav {
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 20px;
+  }
+
+  .nav-tab { padding: 8px 16px; font-size: 14px; }
+
+  /* モード切り替えボタンを小さくする */
+  .mode-btn { padding: 4px 8px; font-size: 11px; }
+
+  /* Swellロゴを小さくする */
+  .swell { font-size: 44px; }
+  .date  { font-size: 16px; }
+
+  /* 打刻ボタンを縦並びにする */
+  .button-group { flex-direction: column; align-items: center; gap: 16px; }
+
+  /* ボタンを画面幅に合わせる */
+  button { padding: 14px 32px; font-size: 18px; }
+  .btn-clockin, .btn-clockout { width: 220px; }
+
+  /* テーブルを横スクロール可能にする */
+  table { font-size: 12px; }
+  th, td { padding: 6px 4px; }
+
+  /* 交通費フォームのラベルを短くする */
+  .form-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .form-row label { width: auto; }
+  .form-input { width: 100%; }
+
+  /* テーブルを横スクロールできる箱で囲む */
+  .table-scroll { overflow-x: auto; }
+}

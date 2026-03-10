@@ -184,6 +184,7 @@ function KintaiPage() {
         <h2>今月の勤務実績</h2>
         <button className="btn-download" onClick={handleDownloadCSV}>ダウンロードする</button>
       </div>
+      <div className="table-scroll">
       <table>
         <thead>
           <tr>
@@ -231,6 +232,7 @@ function KintaiPage() {
           )}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }
