@@ -429,46 +429,76 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
    ========================================== */
 @media (max-width: 600px) {
 
-  /* コンテナの余白を小さくする */
+  /* appをブロック表示にして全幅にする */
+  .app {
+    display: block;
+  }
+
+  /* コンテナを画面にぴったり合わせる */
   .container {
+    width: 100%;
+    max-width: 100%;
     margin: 0;
     border-radius: 0;
-    padding: 20px 16px;
+    padding: 16px 12px;
     min-height: 100vh;
   }
 
-  /* ナビを縦に折り返せるようにする */
+  /* ナビゲーション */
   .nav {
     flex-wrap: wrap;
     gap: 4px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
   }
 
-  .nav-tab { padding: 8px 16px; font-size: 14px; }
+  .nav-tab { padding: 6px 14px; font-size: 13px; }
 
-  /* モード切り替えボタンを小さくする */
+  /* モード切り替えボタン */
+  .nav-spacer { display: none; }
+  .mode-toggle { width: 100%; justify-content: flex-end; margin-top: 4px; }
   .mode-btn { padding: 4px 8px; font-size: 11px; }
 
-  /* Swellロゴを小さくする */
-  .swell { font-size: 44px; }
-  .date  { font-size: 16px; }
+  /* 日付・Swellロゴ */
+  .clock-section { margin-bottom: 20px; }
+  .swell { font-size: 40px; letter-spacing: 2px; }
+  .date  { font-size: 14px; }
 
-  /* 打刻ボタンを縦並びにする */
-  .button-group { flex-direction: column; align-items: center; gap: 16px; }
+  /* 打刻ボタンエリア：横並びのまま、サイズを縮小 */
+  .button-group { gap: 12px; margin-bottom: 24px; }
 
-  /* ボタンを画面幅に合わせる */
-  button { padding: 14px 32px; font-size: 18px; }
-  .btn-clockin, .btn-clockout { width: 220px; }
+  .time-select { font-size: 15px; width: 52px; padding: 6px 2px; }
+  .time-colon  { font-size: 16px; }
+
+  /* 出勤・退勤ボタン */
+  .btn-clockin,
+  .btn-clockout {
+    padding: 12px 20px;
+    font-size: 16px;
+    width: 100px;
+  }
+
+  /* テーブル見出しとダウンロードボタン */
+  .table-header { margin-bottom: 10px; }
+  h2 { font-size: 15px; }
+  .btn-download { padding: 6px 12px; font-size: 12px; }
 
   /* テーブルを横スクロール可能にする */
-  table { font-size: 12px; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table  { font-size: 11px; min-width: 480px; }
   th, td { padding: 6px 4px; }
 
-  /* 交通費フォームのラベルを短くする */
-  .form-row { flex-direction: column; align-items: flex-start; gap: 4px; }
-  .form-row label { width: auto; }
-  .form-input { width: 100%; }
+  /* 削除・確認ボタン */
+  .btn-delete     { padding: 3px 6px; font-size: 11px; }
+  .btn-delete-yes { padding: 3px 6px; font-size: 11px; }
+  .btn-delete-no  { padding: 3px 6px; font-size: 11px; }
 
-  /* テーブルを横スクロールできる箱で囲む */
-  .table-scroll { overflow-x: auto; }
+  /* 交通費フォーム */
+  .kotsu-form { padding: 16px; margin-bottom: 20px; }
+  .form-row   { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .form-row label { width: auto; font-size: 13px; }
+  .form-input { width: 100%; box-sizing: border-box; font-size: 14px; }
+  .btn-add    { font-size: 15px; padding: 10px; }
+
+  .page-title { font-size: 17px; margin-bottom: 16px; }
 }
