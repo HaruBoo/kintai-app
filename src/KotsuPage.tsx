@@ -33,6 +33,11 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
   const [receiptDataUrl, setReceiptDataUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // 領収書に記載された購入日・購入金額
+  // useState('') → 最初は空欄。入力するたびに値が更新される
+  const [receiptDate,   setReceiptDate]   = useState('')
+  const [receiptAmount, setReceiptAmount] = useState('')
+
   // 領収書の拡大表示（url: 画像データ、filename: 保存時のファイル名）
   const [viewReceipt, setViewReceipt] = useState<{ url: string; filename: string } | null>(null)
 
@@ -76,14 +81,20 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
       from: fromInput,
       to: toInput,
       amount: amountInput,
-      receiptImage: receiptDataUrl ?? undefined,  // 画像があれば一緒に保存
+      receiptImage:  receiptDataUrl   ?? undefined,
+      // 入力があれば保存、空欄なら undefined（保存しない）
+      // || undefined → 空文字('')はfalseなのでundefinedになる
+      receiptDate:   receiptDate   || undefined,
+      receiptAmount: receiptAmount || undefined,
     }])
 
-    // フォームをリセット
+    // フォームをリセット（すべての入力欄を空に戻す）
     setFromInput('')
     setToInput('')
     setAmountInput('')
     setReceiptDataUrl(null)
+    setReceiptDate('')
+    setReceiptAmount('')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -108,9 +119,13 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
 
   const handleDownloadCSV = () => {
     const monthLabel = `${viewYear}年${viewMonth}月`
-    const header = ['日付', '出発駅', '到着駅', '費用（円）']
-    const rows = records.map(r => [r.date, r.from, r.to, r.amount])
-    const footer = ['', '', '合計', String(total)]
+    const header = ['日付', '出発駅', '到着駅', '費用（円）', '領収書購入日', '領収書金額（円）']
+    const rows = records.map(r => [
+      r.date, r.from, r.to, r.amount,
+      r.receiptDate ?? '',    // 未入力なら空欄
+      r.receiptAmount ?? '',  // 未入力なら空欄
+    ])
+    const footer = ['', '', '合計', String(total), '', '']
     downloadCSV([header, ...rows, footer], `交通費_${monthLabel}.csv`)
   }
 
@@ -120,9 +135,13 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
     const zip = new JSZip()
 
     // ZIPの中にCSVを追加（BOM付きでExcel対応）
-    const header = ['日付', '出発駅', '到着駅', '費用（円）', '領収書']
-    const rows = records.map(r => [r.date, r.from, r.to, r.amount, r.receiptImage ? 'あり' : ''])
-    const footer = ['', '', '合計', String(total), '']
+    const header = ['日付', '出発駅', '到着駅', '費用（円）', '領収書購入日', '領収書金額（円）', '領収書画像']
+    const rows = records.map(r => [
+      r.date, r.from, r.to, r.amount,
+      r.receiptDate ?? '', r.receiptAmount ?? '',
+      r.receiptImage ? 'あり' : '',
+    ])
+    const footer = ['', '', '合計', String(total), '', '', '']
     const csvContent = '\uFEFF' + [header, ...rows, footer]
       .map(row => row.join(','))
       .join('\n')
@@ -208,6 +227,37 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
           </div>
         </div>
 
+        {/* 領収書の購入日・購入金額（画像と一緒に管理する情報） */}
+        <div className="receipt-meta-area">
+          <div className="form-row">
+            <label>購入日</label>
+            {/*
+              type="date" → カレンダーで日付を選択できる入力欄
+              value={receiptDate} → Reactが値を管理（制御コンポーネント）
+              onChange → 入力が変わるたびに setReceiptDate で状態を更新
+            */}
+            <input
+              type="date"
+              className="form-input"
+              value={receiptDate}
+              onChange={e => setReceiptDate(e.target.value)}
+            />
+          </div>
+          <div className="form-row">
+            <label>購入金額（円）</label>
+            {/*
+              type="number" → 数字のみ入力できる欄（文字は入力不可）
+            */}
+            <input
+              type="number"
+              className="form-input"
+              placeholder="例：500"
+              value={receiptAmount}
+              onChange={e => setReceiptAmount(e.target.value)}
+            />
+          </div>
+        </div>
+
         <div className="form-row">
           <label>日付</label>
           <input type="date" className="form-input"
@@ -278,21 +328,34 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
                   <td>{r.to}</td>
                   <td>¥{Number(r.amount).toLocaleString()}</td>
                   <td>
-                    {/* 領収書画像があれば📎アイコン、クリックで拡大表示 */}
-                    {r.receiptImage ? (
-                      <button
-                        className="btn-receipt-view"
-                        onClick={() => setViewReceipt({
-                          url: r.receiptImage!,
-                          filename: `領収書_${r.date}_${r.from}_${r.to}.${getExtension(r.receiptImage!)}`,
-                        })}
-                        title="領収書を表示"
-                      >
-                        📎
-                      </button>
-                    ) : (
-                      <span className="text-muted">—</span>
-                    )}
+                    {/*
+                      領収書セル：画像アイコン＋購入日・金額をまとめて表示
+                      r.receiptImage が存在する場合だけ📎を表示
+                      r.receiptDate / r.receiptAmount は入力があれば表示
+                    */}
+                    <div className="receipt-cell">
+                      {r.receiptImage ? (
+                        <button
+                          className="btn-receipt-view"
+                          onClick={() => setViewReceipt({
+                            url: r.receiptImage!,
+                            filename: `領収書_${r.date}_${r.from}_${r.to}.${getExtension(r.receiptImage!)}`,
+                          })}
+                          title="領収書を表示"
+                        >
+                          📎
+                        </button>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                      {/* 購入日・購入金額が入力されていれば小さく表示 */}
+                      {(r.receiptDate || r.receiptAmount) && (
+                        <div className="receipt-meta">
+                          {r.receiptDate   && <span>{r.receiptDate}</span>}
+                          {r.receiptAmount && <span>¥{Number(r.receiptAmount).toLocaleString()}</span>}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td>
                     {deleteConfirmIndex === i ? (

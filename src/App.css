@@ -636,6 +636,32 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
 }
 
 
+/* 領収書の購入日・購入金額をまとめる枠（薄いボーダーで視覚的に区別） */
+.receipt-meta-area {
+  border-left: 3px solid var(--border-light);
+  padding-left: 12px;
+  margin-bottom: 4px;
+}
+
+/* テーブルの領収書セル（アイコン＋購入日・金額を縦に並べる） */
+.receipt-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+/* 購入日・購入金額の小さいテキスト表示 */
+.receipt-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
 /* テーブル内の領収書アイコンボタン */
 .btn-receipt-view {
   padding: 4px 8px;
