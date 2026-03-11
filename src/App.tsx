@@ -100,7 +100,11 @@ function App() {
   )
 
   // 未ログインはログイン画面を表示
-  if (!session) return <LoginPage />
+  if (!session) return (
+    <div className={`app ${isDark ? 'dark' : ''}`}>
+      <LoginPage />
+    </div>
+  )
 
   return (
     <div className={`app ${isDark ? 'dark' : ''}`}>
