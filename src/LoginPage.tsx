@@ -13,6 +13,9 @@ function LoginPage() {
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
 
+  // パスワードの表示/非表示（デフォルトは表示）
+  const [showPassword, setShowPassword] = useState(true)
+
   // ローディング中フラグ（ボタンの二重送信を防ぐ）
   const [loading,  setLoading]  = useState(false)
 
@@ -67,16 +70,24 @@ function LoginPage() {
         {/* パスワード */}
         <div className="login-field">
           <label>パスワード</label>
-          <input
-            type="password"
-            className="login-input"
-            placeholder="パスワード"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            autoComplete="current-password"
-            // Enterキーでもログインできる
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-          />
+          <div className="profile-input-wrapper">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              className="login-input"
+              placeholder="パスワード"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="current-password"
+              onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            />
+            <button
+              className="toggle-mask-btn"
+              onClick={() => setShowPassword(v => !v)}
+              title={showPassword ? '隠す' : '表示する'}
+            >
+              {showPassword ? '🙈' : '👁'}
+            </button>
+          </div>
         </div>
 
         {/* ログインボタン */}
