@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# 環境変数（APIキーが含まれるためGitHubには上げない）
+.env
+.env.local
+
 # ローカル用メモ・解説ドキュメント（GitHubには上げない）
 docs/
 

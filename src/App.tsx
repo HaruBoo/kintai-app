@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import KintaiPage from './KintaiPage'
 import KotsuPage from './KotsuPage'
+import LoginPage from './LoginPage'
 import ProfileSection from './components/ProfileSection'
 import { emptyProfile } from './services/profileService'
+import { supabase } from './services/supabase'
 import type { Profile } from './types/profile'
+import type { Session } from '@supabase/supabase-js'
 
 type ColorMode = 'auto' | 'light' | 'dark'
 
@@ -15,6 +18,12 @@ const isDaytime = () => {
 
 function App() {
   const [page, setPage] = useState<'kintai' | 'kotsu'>('kintai')
+
+  // ログインセッション（null = 未ログイン）
+  const [session, setSession] = useState<Session | null>(null)
+
+  // セッションの読み込みが完了したか（完了前は画面を表示しない）
+  const [sessionLoaded, setSessionLoaded] = useState(false)
 
   // カラーモードのみ localStorage に保存（PIIは保存しない）
   const [colorMode, setColorMode] = useState<ColorMode>(() =>
@@ -32,6 +41,23 @@ function App() {
 
   // PII: メモリのみ保持。localStorage/sessionStorage/URLには出力しない
   const [profile, setProfile] = useState<Profile>(emptyProfile)
+
+  // アプリ起動時にログイン状態を確認する
+  useEffect(() => {
+    // 現在のセッションを取得
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setSessionLoaded(true)
+    })
+
+    // ログイン・ログアウトの変化を監視する
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    // コンポーネントが消えるときに監視を止める
+    return () => subscription.unsubscribe()
+  }, [])
 
   useEffect(() => {
     const update = () => {
@@ -66,6 +92,12 @@ function App() {
   const isCurrentMonth =
     viewYear === new Date().getFullYear() && viewMonth === new Date().getMonth() + 1
 
+  // セッション確認中は何も表示しない（画面のちらつきを防ぐ）
+  if (!sessionLoaded) return null
+
+  // 未ログインはログイン画面を表示
+  if (!session) return <LoginPage />
+
   return (
     <div className={`app ${isDark ? 'dark' : ''}`}>
       <div className="container">
@@ -93,6 +125,10 @@ function App() {
             <button className={`mode-btn ${colorMode === 'auto'  ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('auto')} >🌓 自動</button>
             <button className={`mode-btn ${colorMode === 'dark'  ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('dark')} >🌙 ダーク</button>
           </div>
+          {/* ログアウトボタン */}
+          <button className="btn-logout" onClick={() => supabase.auth.signOut()}>
+            ログアウト
+          </button>
         </nav>
 
         {/* profile は PIIを扱うページにのみ渡す */}
