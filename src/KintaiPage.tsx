@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
 import type { DayRecord } from './types/attendance'
+import type { Profile } from './types/profile'
 import { HOURS, MINUTES, toHHMM, getNowH, getNowM, calcTimes } from './utils/time'
 import { formatDateLong, formatDateShort, getWeekday, dateJPtoISO, getRowClass } from './utils/date'
-import { downloadCSV } from './utils/csv'
 import { loadFromStorage, saveToStorage, getKintaiKey } from './utils/storage'
-
-type Profile = { empNo: string; name: string }
+import CsvExport from './components/CsvExport'
 
 type Props = {
   viewYear: number
@@ -31,9 +30,6 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
   const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null)
   const [editDateIndex, setEditDateIndex] = useState<number | null>(null)
   const [editDateValue, setEditDateValue] = useState('')
-
-  // CSVに個人情報を含めるかどうか（明示的な操作時のみtrue）
-  const [includeProfile, setIncludeProfile] = useState(false)
 
   // 1秒ごとに時刻を更新
   useEffect(() => {
@@ -99,28 +95,6 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
     ))
   }
 
-  const handleDownloadCSV = () => {
-    const monthLabel = `${viewYear}年${viewMonth}月`
-    const dataRows = records.map(r =>
-      [r.date, r.weekday, r.clockIn, r.clockOut, r.breakTime, r.workTime, r.note]
-    )
-    const header = [['日付', '曜日', '出勤', '退勤', '休憩', '実働', '備考']]
-    const footer = [[], [`勤務日数: ${workingDays}日`]]
-
-    // 個人情報は「含める」を明示的にチェックした場合のみ追加
-    const profileRows = includeProfile && (profile.empNo || profile.name)
-      ? [
-          [`社員番号: ${profile.empNo}`, `氏名: ${profile.name}`, monthLabel],
-          [],
-        ]
-      : [[monthLabel], []]
-
-    downloadCSV([...profileRows, ...header, ...dataRows, ...footer], `勤怠_${monthLabel}.csv`)
-
-    // ダウンロード後にチェックをリセット（次回また明示的に操作が必要）
-    setIncludeProfile(false)
-  }
-
   return (
     <div>
       {/* 日付・ロゴ */}
@@ -164,18 +138,14 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
         <h2>勤務実績</h2>
         <div className="table-header-right">
           <span className="working-days">勤務日数：{workingDays}日</span>
-          <div className="download-area">
-            {/* 個人情報をCSVに含めるかどうか（明示的な操作が必要） */}
-            <label className="include-profile-label">
-              <input
-                type="checkbox"
-                checked={includeProfile}
-                onChange={e => setIncludeProfile(e.target.checked)}
-              />
-              個人情報を含める
-            </label>
-            <button className="btn-download" onClick={handleDownloadCSV}>ダウンロードする</button>
-          </div>
+          <CsvExport
+            buildRows={() => records.map(r =>
+              [r.date, r.weekday, r.clockIn, r.clockOut, r.breakTime, r.workTime, r.note]
+            )}
+            filename={`勤怠_${viewYear}年${viewMonth}月.csv`}
+            profile={profile}
+            summary={`勤務日数: ${workingDays}日`}
+          />
         </div>
       </div>
       <div className="table-scroll">

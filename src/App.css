@@ -115,6 +115,38 @@
   border-color: var(--text-accent);
 }
 
+/* 社員番号の入力欄＋マスク切り替えボタンのラッパー */
+.profile-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* マスク表示/非表示ボタン */
+.toggle-mask-btn {
+  padding: 4px 8px;
+  font-size: 14px;
+  background: none;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  line-height: 1;
+  transition: border-color 0.2s;
+}
+
+.toggle-mask-btn:hover {
+  border-color: var(--text-accent);
+}
+
+/* マスクされた社員番号のプレビュー表示 */
+.masked-preview {
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  margin-left: 4px;
+}
+
 /* 個人情報保護の注意書き */
 .profile-notice {
   font-size: 11px;
@@ -123,22 +155,44 @@
   width: 100%;
 }
 
-/* ダウンロードエリア（チェックボックス＋ボタン） */
-.download-area {
+/* ==========================================
+   CSV出力エリア（PII方針ラジオ＋ボタン）
+   ========================================== */
+.csv-export {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* PII方針ラジオボタン群 */
+.pii-policy {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-/* 個人情報を含めるチェックボックスのラベル */
-.include-profile-label {
+.pii-policy-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.pii-option {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   font-size: 12px;
   color: var(--text-muted);
   cursor: pointer;
   white-space: nowrap;
+}
+
+/* 「含める」は赤系で危険な操作を示す */
+.pii-option-danger {
+  color: #e57373;
 }
 
 /* ==========================================
@@ -588,9 +642,14 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   }
 
   /* テーブルヘッダー */
-  .table-header { margin-bottom: 8px; }
+  .table-header { margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
   h2 { font-size: clamp(13px, 3.5vw, 16px); }
   .btn-download { padding: 6px 10px; font-size: 12px; }
+
+  /* CSV出力エリア */
+  .csv-export { align-items: flex-start; }
+  .pii-policy { justify-content: flex-start; gap: 6px; }
+  .pii-policy-label, .pii-option { font-size: 11px; }
 
   /* テーブルは横スクロール */
   .table-scroll {
