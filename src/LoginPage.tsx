@@ -13,8 +13,8 @@ function LoginPage() {
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
 
-  // パスワードの表示/非表示（デフォルトは表示）
-  const [showPassword, setShowPassword] = useState(true)
+  // パスワードの表示/非表示（デフォルトは非表示）
+  const [showPassword, setShowPassword] = useState(false)
 
   // ローディング中フラグ（ボタンの二重送信を防ぐ）
   const [loading,  setLoading]  = useState(false)
