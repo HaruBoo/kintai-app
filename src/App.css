@@ -543,36 +543,7 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
 .btn-download:hover { background-color: #006064; }
 
 /* ==========================================
-   AI分析 APIキー設定エリア
-   ========================================== */
-.api-key-section {
-  background-color: var(--bg-form);
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 20px;
-}
-
-.api-key-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.api-key-label {
-  font-size: 13px;
-  font-weight: bold;
-  color: var(--text-heading);
-}
-
-/* APIキー入力欄は社員番号より広め */
-.api-key-input {
-  width: 280px !important;
-}
-
-/* ==========================================
-   領収書アップロード・AI分析
+   領収書アップロード
    ========================================== */
 
 /* ファイル選択ボタン＋プレビューの横並びコンテナ */
@@ -649,118 +620,6 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   flex-wrap: wrap;
 }
 
-/* OCR読み取りボタン（緑：無料・APIキー不要を表す） */
-.btn-ocr {
-  padding: 8px 20px;
-  font-size: 14px;
-  font-weight: bold;
-  background-color: #059669;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s, opacity 0.2s;
-}
-
-.btn-ocr:hover:not(:disabled) {
-  background-color: #047857;
-}
-
-.btn-ocr:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* OCR進捗バー */
-.ocr-progress-bar {
-  width: 160px;
-  height: 6px;
-  background-color: var(--border-light);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.ocr-progress-fill {
-  height: 100%;
-  background-color: #059669;
-  border-radius: 3px;
-  transition: width 0.2s;
-}
-
-/* OCR生テキスト表示エリア */
-.ocr-raw-area {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-width: 400px;
-}
-
-.ocr-raw-toggle {
-  padding: 4px 10px;
-  font-size: 12px;
-  background: none;
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  color: var(--text-muted);
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 0.2s;
-}
-
-.ocr-raw-toggle:hover {
-  border-color: var(--text-accent);
-}
-
-/* OCRの生テキスト（等幅フォントで表示） */
-.ocr-raw-text {
-  font-size: 11px;
-  color: var(--text-muted);
-  background-color: var(--bg-form);
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  padding: 8px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 120px;
-  overflow-y: auto;
-  font-family: monospace;
-  margin: 0;
-}
-
-/* AI分析ボタン */
-.btn-analyze {
-  padding: 8px 20px;
-  font-size: 14px;
-  font-weight: bold;
-  background-color: #7c3aed;  /* 紫：AIらしい色 */
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s, opacity 0.2s;
-}
-
-.btn-analyze:hover:not(:disabled) {
-  background-color: #6d28d9;
-}
-
-/* 分析中・APIキーなしのときはグレーアウト */
-.btn-analyze:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* 「APIキーを入力してください」の案内文 */
-.analyze-hint {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-/* エラーメッセージ */
-.analyze-error {
-  font-size: 12px;
-  color: #e57373;
-}
 
 /* テーブル内の領収書アイコンボタン */
 .btn-receipt-view {
@@ -962,10 +821,7 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   .form-input { width: 100%; font-size: clamp(13px, 3.5vw, 15px); }
   .btn-add { font-size: clamp(14px, 3.5vw, 16px); padding: 10px; }
 
-  /* APIキー・領収書 */
-  .api-key-section { padding: 12px; }
-  .api-key-input { width: 100% !important; }
+  /* 領収書 */
   .receipt-upload-area { gap: 8px; }
   .receipt-modal-inner { padding: 12px; }
-  .btn-analyze { padding: 8px 14px; font-size: 13px; }
 }

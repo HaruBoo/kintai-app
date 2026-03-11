@@ -3,8 +3,6 @@ import type { KotsuRecord } from './types/transport'
 import { todayISO, formatDateShort, dateJPtoISO } from './utils/date'
 import { downloadCSV } from './utils/csv'
 import { loadFromStorage, saveToStorage, getKotsuKey } from './utils/storage'
-import { analyzeReceipt } from './services/receiptAnalyzer'
-import { ocrReceipt } from './services/ocrAnalyzer'
 
 type Props = {
   viewYear: number
@@ -37,96 +35,19 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
   // 領収書の拡大表示
   const [viewReceiptUrl, setViewReceiptUrl] = useState<string | null>(null)
 
-  // AI分析の状態
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [analyzeError, setAnalyzeError] = useState<string | null>(null)
-
-  // OCRの状態
-  const [isOcring, setIsOcring] = useState(false)
-  const [ocrProgress, setOcrProgress] = useState(0)     // 0〜100
-  const [ocrRawText, setOcrRawText] = useState<string | null>(null)   // 読み取ったテキスト（確認用）
-  const [showRawText, setShowRawText] = useState(false)  // 生テキストの表示/非表示
-  const [ocrError, setOcrError] = useState<string | null>(null)
-
-  // Anthropic APIキー（localStorageに保存）
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('anthropicApiKey') ?? '')
-  const [showApiKey, setShowApiKey] = useState(false)
-
   // recordsが変わるたびに保存
   useEffect(() => {
     saveToStorage(storageKey, records)
   }, [records, storageKey])
 
-  // APIキーが変わるたびにlocalStorageに保存
-  useEffect(() => {
-    localStorage.setItem('anthropicApiKey', apiKey)
-  }, [apiKey])
-
   // 画像ファイルを選択したときの処理
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    // FileReaderでbase64のdata URLに変換
+    // FileReaderでbase64のdata URLに変換して保存できる形にする
     const reader = new FileReader()
-    reader.onload = () => {
-      setReceiptDataUrl(reader.result as string)
-      setAnalyzeError(null)
-    }
+    reader.onload = () => setReceiptDataUrl(reader.result as string)
     reader.readAsDataURL(file)
-  }
-
-  // AIで画像を分析してフォームに結果を反映する
-  const handleAnalyze = async () => {
-    if (!receiptDataUrl || !apiKey) return
-    setIsAnalyzing(true)
-    setAnalyzeError(null)
-
-    try {
-      // data URLの形式: "data:image/jpeg;base64,/9j/..."
-      // ","で分割してbase64部分とメディアタイプを取り出す
-      const [header, base64] = receiptDataUrl.split(',')
-      const mediaType = header.match(/data:(.*);base64/)?.[1] ?? 'image/jpeg'
-
-      const result = await analyzeReceipt(base64, mediaType, apiKey)
-
-      // 分析結果をフォームに反映（ユーザーが後から編集できる）
-      if (result.date)   setDateISO(result.date)
-      if (result.from)   setFromInput(result.from)
-      if (result.to)     setToInput(result.to)
-      if (result.amount) setAmountInput(result.amount)
-    } catch (err) {
-      setAnalyzeError(err instanceof Error ? err.message : '分析に失敗しました')
-    } finally {
-      setIsAnalyzing(false)
-    }
-  }
-
-  // OCRで画像からテキストを読み取り、フォームに反映する
-  const handleOcr = async () => {
-    if (!receiptDataUrl) return
-    setIsOcring(true)
-    setOcrProgress(0)
-    setOcrError(null)
-    setOcrRawText(null)
-
-    try {
-      const result = await ocrReceipt(receiptDataUrl, setOcrProgress)
-
-      // 読み取り結果をフォームに反映（ユーザーが後から編集できる）
-      if (result.date)   setDateISO(result.date)
-      if (result.from)   setFromInput(result.from)
-      if (result.to)     setToInput(result.to)
-      if (result.amount) setAmountInput(result.amount)
-
-      // 生テキストも保存（「何が読み取れたか」確認用）
-      setOcrRawText(result.rawText)
-    } catch (err) {
-      setOcrError(err instanceof Error ? err.message : 'OCR読み取りに失敗しました')
-    } finally {
-      setIsOcring(false)
-      setOcrProgress(0)
-    }
   }
 
   // フォームの入力内容をレコードに追加する
@@ -140,7 +61,7 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
       from: fromInput,
       to: toInput,
       amount: amountInput,
-      receiptImage: receiptDataUrl ?? undefined,  // 画像があれば保存
+      receiptImage: receiptDataUrl ?? undefined,  // 画像があれば一緒に保存
     }])
 
     // フォームをリセット
@@ -182,33 +103,6 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
     <div>
       <h2 className="page-title">交通費申請</h2>
 
-      {/* AI分析のためのAPIキー設定エリア */}
-      <div className="api-key-section">
-        <div className="api-key-header">
-          <span className="api-key-label">🤖 AI分析設定（Anthropic APIキー）</span>
-          <button
-            className="toggle-mask-btn"
-            onClick={() => setShowApiKey(v => !v)}
-            title={showApiKey ? '非表示にする' : '表示する'}
-          >
-            {showApiKey ? '🙈' : '👁'}
-          </button>
-        </div>
-        <div className="profile-input-wrapper">
-          <input
-            type={showApiKey ? 'text' : 'password'}
-            className="profile-input api-key-input"
-            placeholder="sk-ant-api03-..."
-            autoComplete="off"
-            value={apiKey}
-            onChange={e => setApiKey(e.target.value)}
-          />
-        </div>
-        <p className="profile-notice">
-          ※ APIキーはこの端末のlocalStorageに保存されます。領収書の分析にのみ使用します。
-        </p>
-      </div>
-
       {/* 入力フォーム */}
       <div className="kotsu-form">
 
@@ -216,7 +110,7 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
         <div className="form-row">
           <label>領収書</label>
           <div className="receipt-upload-area">
-            {/* 実際のファイル入力は非表示にして、ラベルをボタンとして使う */}
+            {/* 実際のfile inputは非表示にして、labelをボタンとして使う */}
             <input
               ref={fileInputRef}
               type="file"
@@ -229,7 +123,7 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
               📎 画像を選択
             </label>
 
-            {/* プレビュー（選択済みの場合） */}
+            {/* 選択した画像のサムネイル（クリックで拡大） */}
             {receiptDataUrl && (
               <>
                 <img
@@ -254,66 +148,6 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
           </div>
         </div>
 
-        {/* 分析ボタンエリア（画像が選択されているときだけ表示） */}
-        {receiptDataUrl && (
-          <div className="form-row">
-            <label></label>
-            <div className="analyze-area">
-
-              {/* OCRボタン：APIキー不要 */}
-              <button
-                className="btn-ocr"
-                onClick={handleOcr}
-                disabled={isOcring || isAnalyzing}
-              >
-                {isOcring ? `📖 読み取り中 ${ocrProgress}%` : '📷 OCRで読み取り'}
-              </button>
-
-              {/* OCR進捗バー */}
-              {isOcring && (
-                <div className="ocr-progress-bar">
-                  <div className="ocr-progress-fill" style={{ width: `${ocrProgress}%` }} />
-                </div>
-              )}
-
-              {/* AIで分析ボタン：APIキーが必要 */}
-              <button
-                className="btn-analyze"
-                onClick={handleAnalyze}
-                disabled={!apiKey || isAnalyzing || isOcring}
-              >
-                {isAnalyzing ? '⏳ 分析中...' : '🤖 AIで分析'}
-              </button>
-              {!apiKey && (
-                <span className="analyze-hint">AIは上のAPIキーが必要</span>
-              )}
-
-              {/* エラーメッセージ */}
-              {ocrError && <span className="analyze-error">⚠️ {ocrError}</span>}
-              {analyzeError && <span className="analyze-error">⚠️ {analyzeError}</span>}
-            </div>
-          </div>
-        )}
-
-        {/* OCRの生テキスト（読み取り後に表示、確認・参考用） */}
-        {ocrRawText && (
-          <div className="form-row">
-            <label></label>
-            <div className="ocr-raw-area">
-              <button
-                className="ocr-raw-toggle"
-                onClick={() => setShowRawText(v => !v)}
-              >
-                {showRawText ? '▲ 読み取りテキストを隠す' : '▼ 読み取りテキストを確認する'}
-              </button>
-              {showRawText && (
-                <pre className="ocr-raw-text">{ocrRawText}</pre>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* 以下のフォームはAI分析後に自動入力される（ユーザーが編集可能） */}
         <div className="form-row">
           <label>日付</label>
           <input type="date" className="form-input"
@@ -374,7 +208,7 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
                   <td>{r.to}</td>
                   <td>¥{Number(r.amount).toLocaleString()}</td>
                   <td>
-                    {/* 領収書画像がある場合はアイコンを表示、クリックで拡大 */}
+                    {/* 領収書画像があれば📎アイコン、クリックで拡大表示 */}
                     {r.receiptImage ? (
                       <button
                         className="btn-receipt-view"
