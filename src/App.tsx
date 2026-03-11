@@ -92,8 +92,12 @@ function App() {
   const isCurrentMonth =
     viewYear === new Date().getFullYear() && viewMonth === new Date().getMonth() + 1
 
-  // セッション確認中は何も表示しない（画面のちらつきを防ぐ）
-  if (!sessionLoaded) return null
+  // セッション確認中はローディング表示（接続失敗で真っ白になるのを防ぐ）
+  if (!sessionLoaded) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '16px', color: '#aaa' }}>
+      読み込み中...
+    </div>
+  )
 
   // 未ログインはログイン画面を表示
   if (!session) return <LoginPage />
