@@ -292,7 +292,7 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
             </button>
           )}
           <button className="btn-download" onClick={handleDownloadCSV}>
-            CSVのみ
+            表だけダウンロード
           </button>
         </div>
       </div>
