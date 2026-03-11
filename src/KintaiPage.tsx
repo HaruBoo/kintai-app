@@ -32,6 +32,9 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
   const [editDateIndex, setEditDateIndex] = useState<number | null>(null)
   const [editDateValue, setEditDateValue] = useState('')
 
+  // CSVに個人情報を含めるかどうか（明示的な操作時のみtrue）
+  const [includeProfile, setIncludeProfile] = useState(false)
+
   // 1秒ごとに時刻を更新
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
@@ -98,17 +101,24 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
 
   const handleDownloadCSV = () => {
     const monthLabel = `${viewYear}年${viewMonth}月`
-    // 社員情報をヘッダーに含める
-    const info = [
-      [`社員番号: ${profile.empNo}`, `氏名: ${profile.name}`, monthLabel],
-      [],
-      ['日付', '曜日', '出勤', '退勤', '休憩', '実働', '備考'],
-    ]
-    const rows = records.map(r =>
+    const dataRows = records.map(r =>
       [r.date, r.weekday, r.clockIn, r.clockOut, r.breakTime, r.workTime, r.note]
     )
-    const footer = [`勤務日数: ${workingDays}日`]
-    downloadCSV([...info, ...rows, [], footer], `勤怠_${monthLabel}.csv`)
+    const header = [['日付', '曜日', '出勤', '退勤', '休憩', '実働', '備考']]
+    const footer = [[], [`勤務日数: ${workingDays}日`]]
+
+    // 個人情報は「含める」を明示的にチェックした場合のみ追加
+    const profileRows = includeProfile && (profile.empNo || profile.name)
+      ? [
+          [`社員番号: ${profile.empNo}`, `氏名: ${profile.name}`, monthLabel],
+          [],
+        ]
+      : [[monthLabel], []]
+
+    downloadCSV([...profileRows, ...header, ...dataRows, ...footer], `勤怠_${monthLabel}.csv`)
+
+    // ダウンロード後にチェックをリセット（次回また明示的に操作が必要）
+    setIncludeProfile(false)
   }
 
   return (
@@ -153,9 +163,19 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
       <div className="table-header">
         <h2>勤務実績</h2>
         <div className="table-header-right">
-          {/* 勤務日数 */}
           <span className="working-days">勤務日数：{workingDays}日</span>
-          <button className="btn-download" onClick={handleDownloadCSV}>ダウンロードする</button>
+          <div className="download-area">
+            {/* 個人情報をCSVに含めるかどうか（明示的な操作が必要） */}
+            <label className="include-profile-label">
+              <input
+                type="checkbox"
+                checked={includeProfile}
+                onChange={e => setIncludeProfile(e.target.checked)}
+              />
+              個人情報を含める
+            </label>
+            <button className="btn-download" onClick={handleDownloadCSV}>ダウンロードする</button>
+          </div>
         </div>
       </div>
       <div className="table-scroll">

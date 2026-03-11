@@ -17,5 +17,4 @@ export const getKintaiKey = (year: number, month: number) =>
 export const getKotsuKey = (year: number, month: number) =>
   `kotsu-${year}-${String(month).padStart(2, '0')}`
 
-// 社員情報のキー
-export const PROFILE_KEY = 'user-profile'
+// 注意: 社員情報（氏名・社員番号）はlocalStorageに保存しない

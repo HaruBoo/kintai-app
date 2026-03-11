@@ -115,6 +115,32 @@
   border-color: var(--text-accent);
 }
 
+/* 個人情報保護の注意書き */
+.profile-notice {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 4px 0 0 0;
+  width: 100%;
+}
+
+/* ダウンロードエリア（チェックボックス＋ボタン） */
+.download-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 個人情報を含めるチェックボックスのラベル */
+.include-profile-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 /* ==========================================
    月切り替えエリア
    ========================================== */
