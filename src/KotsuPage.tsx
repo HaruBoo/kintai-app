@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import JSZip from 'jszip'
 import type { KotsuRecord } from './types/transport'
 import { todayISO, formatDateShort, dateJPtoISO } from './utils/date'
 import { downloadCSV } from './utils/csv'
@@ -113,6 +114,48 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
     downloadCSV([header, ...rows, footer], `交通費_${monthLabel}.csv`)
   }
 
+  // CSVと領収書画像をまとめてZIPでダウンロードする
+  const handleDownloadZip = async () => {
+    const monthLabel = `${viewYear}年${viewMonth}月`
+    const zip = new JSZip()
+
+    // ZIPの中にCSVを追加（BOM付きでExcel対応）
+    const header = ['日付', '出発駅', '到着駅', '費用（円）', '領収書']
+    const rows = records.map(r => [r.date, r.from, r.to, r.amount, r.receiptImage ? 'あり' : ''])
+    const footer = ['', '', '合計', String(total), '']
+    const csvContent = '\uFEFF' + [header, ...rows, footer]
+      .map(row => row.join(','))
+      .join('\n')
+    zip.file(`交通費_${monthLabel}.csv`, csvContent)
+
+    // ZIPの中に領収書画像フォルダを追加
+    const folder = zip.folder('領収書')
+    records.forEach(r => {
+      if (!r.receiptImage) return
+
+      // data URLを「ヘッダー部分」と「base64データ」に分割
+      const [header, base64] = r.receiptImage.split(',')
+      const mimeType = header.match(/data:(.*);base64/)?.[1] ?? 'image/png'
+      const ext = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1]
+
+      // ファイル名の「/」を「-」に置換してフォルダ構造の崩れを防ぐ
+      const filename = `領収書_${r.date}_${r.from}_${r.to}.${ext}`.replace(/\//g, '-')
+      folder?.file(filename, base64, { base64: true })
+    })
+
+    // ZIPを生成してダウンロード
+    const blob = await zip.generateAsync({ type: 'blob' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `交通費_${monthLabel}.zip`
+    a.click()
+    URL.revokeObjectURL(url)  // メモリ解放
+  }
+
+  // 領収書付きのレコードが1件以上あるか
+  const hasReceipts = records.some(r => r.receiptImage)
+
   return (
     <div>
       <h2 className="page-title">交通費申請</h2>
@@ -191,7 +234,17 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
       {/* 申請一覧テーブル */}
       <div className="table-header">
         <h2>申請一覧</h2>
-        <button className="btn-download" onClick={handleDownloadCSV}>ダウンロードする</button>
+        <div className="download-buttons">
+          {/* 領収書がある場合のみZIPボタンを表示 */}
+          {hasReceipts && (
+            <button className="btn-download btn-download-zip" onClick={handleDownloadZip}>
+              📦 ZIP（CSV＋画像）
+            </button>
+          )}
+          <button className="btn-download" onClick={handleDownloadCSV}>
+            CSVのみ
+          </button>
+        </div>
       </div>
 
       <div className="table-scroll">

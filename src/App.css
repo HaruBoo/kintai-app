@@ -527,6 +527,14 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   color: var(--text-accent);
 }
 
+/* ダウンロードボタンを複数並べるコンテナ */
+.download-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 /* ダウンロードボタン */
 .btn-download {
   padding: 8px 20px;
@@ -541,6 +549,13 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
 }
 
 .btn-download:hover { background-color: #006064; }
+
+/* ZIPダウンロードボタン（水色系で区別） */
+.btn-download-zip {
+  background-color: var(--text-accent);
+}
+
+.btn-download-zip:hover { background-color: var(--btn-clockin-hover); }
 
 /* ==========================================
    領収書アップロード
