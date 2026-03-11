@@ -119,6 +119,13 @@ function App() {
           )}
         </div>
 
+        {/* ログアウトボタン（右端） */}
+        <div className="logout-area">
+          <button className="btn-logout" onClick={() => supabase.auth.signOut()}>
+            ログアウト
+          </button>
+        </div>
+
         {/* ナビゲーション */}
         <nav className="nav">
           <button className={`nav-tab ${page === 'kintai' ? 'nav-tab-active' : ''}`} onClick={() => setPage('kintai')}>勤怠</button>
@@ -129,10 +136,6 @@ function App() {
             <button className={`mode-btn ${colorMode === 'auto'  ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('auto')} >🌓 自動</button>
             <button className={`mode-btn ${colorMode === 'dark'  ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('dark')} >🌙 ダーク</button>
           </div>
-          {/* ログアウトボタン */}
-          <button className="btn-logout" onClick={() => supabase.auth.signOut()}>
-            ログアウト
-          </button>
         </nav>
 
         {/* profile は PIIを扱うページにのみ渡す */}

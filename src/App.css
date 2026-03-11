@@ -290,6 +290,13 @@
   cursor: not-allowed;
 }
 
+/* ログアウトボタンを右端に寄せるエリア */
+.logout-area {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
 /* ログアウトボタン */
 .btn-logout {
   padding: 6px 14px;
