@@ -2,11 +2,18 @@ import { useState, useEffect } from 'react'
 import type { KotsuRecord } from './types/transport'
 import { todayISO, formatDateShort, dateJPtoISO } from './utils/date'
 import { downloadCSV } from './utils/csv'
-import { loadFromStorage, saveToStorage, STORAGE_KEYS } from './utils/storage'
+import { loadFromStorage, saveToStorage, getKotsuKey } from './utils/storage'
 
-function KotsuPage() {
+type Props = {
+  viewYear: number
+  viewMonth: number
+}
+
+function KotsuPage({ viewYear, viewMonth }: Props) {
+  const storageKey = getKotsuKey(viewYear, viewMonth)
+
   const [records, setRecords] = useState<KotsuRecord[]>(() =>
-    loadFromStorage<KotsuRecord[]>(STORAGE_KEYS.kotsu, [])
+    loadFromStorage<KotsuRecord[]>(storageKey, [])
   )
 
   const [dateISO, setDateISO] = useState(todayISO)
@@ -18,8 +25,8 @@ function KotsuPage() {
   const [amountInput, setAmountInput] = useState('')
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.kotsu, records)
-  }, [records])
+    saveToStorage(storageKey, records)
+  }, [records, storageKey])
 
   const handleDateClick = (index: number, currentDate: string) => {
     setEditDateIndex(index)
@@ -57,10 +64,10 @@ function KotsuPage() {
   const total = records.reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
 
   const handleDownloadCSV = () => {
+    const monthLabel = `${viewYear}年${viewMonth}月`
     const header = ['日付', '出発駅', '到着駅', '費用（円）']
     const rows = records.map(r => [r.date, r.from, r.to, r.amount])
     const footer = ['', '', '合計', String(total)]
-    const monthLabel = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' })
     downloadCSV([header, ...rows, footer], `交通費_${monthLabel}.csv`)
   }
 
@@ -106,7 +113,7 @@ function KotsuPage() {
           </thead>
           <tbody>
             {records.length === 0 ? (
-              <tr><td colSpan={5} className="no-record">交通費データがありません</td></tr>
+              <tr><td colSpan={5} className="no-record">データがありません</td></tr>
             ) : (
               records.map((r, i) => (
                 <tr key={i}>

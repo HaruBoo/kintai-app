@@ -78,6 +78,87 @@
 }
 
 /* ==========================================
+   社員情報エリア
+   ========================================== */
+.profile-section {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.profile-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-field label {
+  font-size: 13px;
+  color: var(--text-heading);
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.profile-input {
+  padding: 6px 10px;
+  font-size: 14px;
+  border: 2px solid var(--border-light);
+  border-radius: 8px;
+  background-color: var(--bg-container);
+  color: var(--text-primary);
+  outline: none;
+  width: 140px;
+}
+
+.profile-input:focus {
+  border-color: var(--text-accent);
+}
+
+/* ==========================================
+   月切り替えエリア
+   ========================================== */
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.month-label {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text-heading);
+  min-width: 100px;
+  text-align: center;
+}
+
+.month-btn {
+  padding: 6px 14px;
+  font-size: 16px;
+  background-color: var(--bg-form);
+  border: 2px solid var(--border-light);
+  border-radius: 8px;
+  color: var(--text-heading);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.month-btn:hover {
+  background-color: var(--border-light);
+}
+
+.month-today-btn {
+  padding: 4px 12px;
+  font-size: 13px;
+  background-color: var(--text-accent);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+/* ==========================================
    ナビゲーション
    ========================================== */
 .nav {
@@ -244,6 +325,21 @@ h2 {
   color: var(--text-heading);
   font-size: 18px;
   margin: 0;
+}
+
+/* テーブルヘッダー右側（勤務日数＋ダウンロード） */
+.table-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 勤務日数の表示 */
+.working-days {
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--text-accent);
+  white-space: nowrap;
 }
 
 table {
