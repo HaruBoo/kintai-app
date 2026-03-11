@@ -667,6 +667,19 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   overflow: auto;
 }
 
+/* 閉じる・ダウンロードボタンを横並びにするツールバー */
+.receipt-modal-toolbar {
+  display: flex;
+  gap: 8px;
+  align-self: flex-end;
+}
+
+/* モーダル内のダウンロードボタン（既存の.btn-downloadを流用） */
+.receipt-modal-download {
+  padding: 6px 16px;
+  font-size: 14px;
+}
+
 /* 閉じるボタン */
 .receipt-modal-close {
   padding: 6px 16px;

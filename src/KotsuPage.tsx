@@ -32,8 +32,22 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
   const [receiptDataUrl, setReceiptDataUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // 領収書の拡大表示
-  const [viewReceiptUrl, setViewReceiptUrl] = useState<string | null>(null)
+  // 領収書の拡大表示（url: 画像データ、filename: 保存時のファイル名）
+  const [viewReceipt, setViewReceipt] = useState<{ url: string; filename: string } | null>(null)
+
+  // data URLから拡張子を取り出す（例: "data:image/jpeg;base64,..." → "jpg"）
+  const getExtension = (dataUrl: string): string => {
+    const type = dataUrl.match(/data:image\/(\w+);base64/)?.[1] ?? 'png'
+    return type === 'jpeg' ? 'jpg' : type
+  }
+
+  // 領収書画像をファイルとしてダウンロードする
+  const downloadImage = (url: string, filename: string) => {
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+  }
 
   // recordsが変わるたびに保存
   useEffect(() => {
@@ -130,7 +144,10 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
                   src={receiptDataUrl}
                   className="receipt-preview"
                   alt="領収書プレビュー"
-                  onClick={() => setViewReceiptUrl(receiptDataUrl)}
+                  onClick={() => setViewReceipt({
+                    url: receiptDataUrl,
+                    filename: `領収書.${getExtension(receiptDataUrl)}`,
+                  })}
                   title="クリックで拡大"
                 />
                 <button
@@ -212,7 +229,10 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
                     {r.receiptImage ? (
                       <button
                         className="btn-receipt-view"
-                        onClick={() => setViewReceiptUrl(r.receiptImage!)}
+                        onClick={() => setViewReceipt({
+                          url: r.receiptImage!,
+                          filename: `領収書_${r.date}_${r.from}_${r.to}.${getExtension(r.receiptImage!)}`,
+                        })}
                         title="領収書を表示"
                       >
                         📎
@@ -248,13 +268,21 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
       </div>
 
       {/* 領収書の拡大表示モーダル（背景クリックで閉じる） */}
-      {viewReceiptUrl && (
-        <div className="receipt-modal" onClick={() => setViewReceiptUrl(null)}>
+      {viewReceipt && (
+        <div className="receipt-modal" onClick={() => setViewReceipt(null)}>
           <div className="receipt-modal-inner" onClick={e => e.stopPropagation()}>
-            <button className="receipt-modal-close" onClick={() => setViewReceiptUrl(null)}>
-              ✕ 閉じる
-            </button>
-            <img src={viewReceiptUrl} alt="領収書" className="receipt-modal-img" />
+            <div className="receipt-modal-toolbar">
+              <button
+                className="btn-download receipt-modal-download"
+                onClick={() => downloadImage(viewReceipt.url, viewReceipt.filename)}
+              >
+                ダウンロード
+              </button>
+              <button className="receipt-modal-close" onClick={() => setViewReceipt(null)}>
+                ✕ 閉じる
+              </button>
+            </div>
+            <img src={viewReceipt.url} alt="領収書" className="receipt-modal-img" />
           </div>
         </div>
       )}
