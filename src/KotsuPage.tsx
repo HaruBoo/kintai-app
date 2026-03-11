@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { KotsuRecord } from './types/transport'
 import { todayISO, formatDateShort, dateJPtoISO } from './utils/date'
 import { downloadCSV } from './utils/csv'
 import { loadFromStorage, saveToStorage, getKotsuKey } from './utils/storage'
+import { analyzeReceipt } from './services/receiptAnalyzer'
 
 type Props = {
   viewYear: number
@@ -12,21 +13,108 @@ type Props = {
 function KotsuPage({ viewYear, viewMonth }: Props) {
   const storageKey = getKotsuKey(viewYear, viewMonth)
 
+  // 月ごとの交通費データ
   const [records, setRecords] = useState<KotsuRecord[]>(() =>
     loadFromStorage<KotsuRecord[]>(storageKey, [])
   )
 
+  // フォーム入力値
   const [dateISO, setDateISO] = useState(todayISO)
-  const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null)
-  const [editDateIndex, setEditDateIndex] = useState<number | null>(null)
-  const [editDateValue, setEditDateValue] = useState('')
   const [fromInput, setFromInput] = useState('')
   const [toInput, setToInput] = useState('')
   const [amountInput, setAmountInput] = useState('')
 
+  // テーブルの編集・削除状態
+  const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null)
+  const [editDateIndex, setEditDateIndex] = useState<number | null>(null)
+  const [editDateValue, setEditDateValue] = useState('')
+
+  // 領収書画像（フォーム入力中のもの）
+  const [receiptDataUrl, setReceiptDataUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // 領収書の拡大表示
+  const [viewReceiptUrl, setViewReceiptUrl] = useState<string | null>(null)
+
+  // AI分析の状態
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null)
+
+  // Anthropic APIキー（localStorageに保存）
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('anthropicApiKey') ?? '')
+  const [showApiKey, setShowApiKey] = useState(false)
+
+  // recordsが変わるたびに保存
   useEffect(() => {
     saveToStorage(storageKey, records)
   }, [records, storageKey])
+
+  // APIキーが変わるたびにlocalStorageに保存
+  useEffect(() => {
+    localStorage.setItem('anthropicApiKey', apiKey)
+  }, [apiKey])
+
+  // 画像ファイルを選択したときの処理
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // FileReaderでbase64のdata URLに変換
+    const reader = new FileReader()
+    reader.onload = () => {
+      setReceiptDataUrl(reader.result as string)
+      setAnalyzeError(null)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // AIで画像を分析してフォームに結果を反映する
+  const handleAnalyze = async () => {
+    if (!receiptDataUrl || !apiKey) return
+    setIsAnalyzing(true)
+    setAnalyzeError(null)
+
+    try {
+      // data URLの形式: "data:image/jpeg;base64,/9j/..."
+      // ","で分割してbase64部分とメディアタイプを取り出す
+      const [header, base64] = receiptDataUrl.split(',')
+      const mediaType = header.match(/data:(.*);base64/)?.[1] ?? 'image/jpeg'
+
+      const result = await analyzeReceipt(base64, mediaType, apiKey)
+
+      // 分析結果をフォームに反映（ユーザーが後から編集できる）
+      if (result.date)   setDateISO(result.date)
+      if (result.from)   setFromInput(result.from)
+      if (result.to)     setToInput(result.to)
+      if (result.amount) setAmountInput(result.amount)
+    } catch (err) {
+      setAnalyzeError(err instanceof Error ? err.message : '分析に失敗しました')
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  // フォームの入力内容をレコードに追加する
+  const handleAdd = () => {
+    if (!fromInput || !toInput || !amountInput) {
+      alert('出発駅・到着駅・費用をすべて入力してください')
+      return
+    }
+    setRecords([...records, {
+      date: formatDateShort(new Date(dateISO)),
+      from: fromInput,
+      to: toInput,
+      amount: amountInput,
+      receiptImage: receiptDataUrl ?? undefined,  // 画像があれば保存
+    }])
+
+    // フォームをリセット
+    setFromInput('')
+    setToInput('')
+    setAmountInput('')
+    setReceiptDataUrl(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const handleDateClick = (index: number, currentDate: string) => {
     setEditDateIndex(index)
@@ -45,22 +133,6 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
     setDeleteConfirmIndex(null)
   }
 
-  const handleAdd = () => {
-    if (!fromInput || !toInput || !amountInput) {
-      alert('出発駅・到着駅・費用をすべて入力してください')
-      return
-    }
-    setRecords([...records, {
-      date: formatDateShort(new Date(dateISO)),
-      from: fromInput,
-      to: toInput,
-      amount: amountInput,
-    }])
-    setFromInput('')
-    setToInput('')
-    setAmountInput('')
-  }
-
   const total = records.reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
 
   const handleDownloadCSV = () => {
@@ -75,7 +147,103 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
     <div>
       <h2 className="page-title">交通費申請</h2>
 
+      {/* AI分析のためのAPIキー設定エリア */}
+      <div className="api-key-section">
+        <div className="api-key-header">
+          <span className="api-key-label">🤖 AI分析設定（Anthropic APIキー）</span>
+          <button
+            className="toggle-mask-btn"
+            onClick={() => setShowApiKey(v => !v)}
+            title={showApiKey ? '非表示にする' : '表示する'}
+          >
+            {showApiKey ? '🙈' : '👁'}
+          </button>
+        </div>
+        <div className="profile-input-wrapper">
+          <input
+            type={showApiKey ? 'text' : 'password'}
+            className="profile-input api-key-input"
+            placeholder="sk-ant-api03-..."
+            autoComplete="off"
+            value={apiKey}
+            onChange={e => setApiKey(e.target.value)}
+          />
+        </div>
+        <p className="profile-notice">
+          ※ APIキーはこの端末のlocalStorageに保存されます。領収書の分析にのみ使用します。
+        </p>
+      </div>
+
+      {/* 入力フォーム */}
       <div className="kotsu-form">
+
+        {/* 領収書アップロードエリア */}
+        <div className="form-row">
+          <label>領収書</label>
+          <div className="receipt-upload-area">
+            {/* 実際のファイル入力は非表示にして、ラベルをボタンとして使う */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="receipt-file-input"
+              id="receiptFile"
+              onChange={handleFileChange}
+            />
+            <label htmlFor="receiptFile" className="receipt-file-label">
+              📎 画像を選択
+            </label>
+
+            {/* プレビュー（選択済みの場合） */}
+            {receiptDataUrl && (
+              <>
+                <img
+                  src={receiptDataUrl}
+                  className="receipt-preview"
+                  alt="領収書プレビュー"
+                  onClick={() => setViewReceiptUrl(receiptDataUrl)}
+                  title="クリックで拡大"
+                />
+                <button
+                  className="btn-receipt-clear"
+                  onClick={() => {
+                    setReceiptDataUrl(null)
+                    if (fileInputRef.current) fileInputRef.current.value = ''
+                  }}
+                  title="画像を削除"
+                >
+                  ✕
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* AI分析ボタン（画像が選択されているときだけ表示） */}
+        {receiptDataUrl && (
+          <div className="form-row">
+            <label></label>
+            <div className="analyze-area">
+              <button
+                className="btn-analyze"
+                onClick={handleAnalyze}
+                disabled={!apiKey || isAnalyzing}
+              >
+                {isAnalyzing ? '⏳ 分析中...' : '🤖 AIで分析'}
+              </button>
+              {/* APIキーが未入力の場合の案内 */}
+              {!apiKey && (
+                <span className="analyze-hint">上のAPIキーを入力すると使えます</span>
+              )}
+              {/* エラーメッセージ */}
+              {analyzeError && (
+                <span className="analyze-error">⚠️ {analyzeError}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 以下のフォームはAI分析後に自動入力される（ユーザーが編集可能） */}
         <div className="form-row">
           <label>日付</label>
           <input type="date" className="form-input"
@@ -99,6 +267,7 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
         <button className="btn-add" onClick={handleAdd}>追加する</button>
       </div>
 
+      {/* 申請一覧テーブル */}
       <div className="table-header">
         <h2>申請一覧</h2>
         <button className="btn-download" onClick={handleDownloadCSV}>ダウンロードする</button>
@@ -108,12 +277,12 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
         <table>
           <thead>
             <tr>
-              <th>日付</th><th>出発駅</th><th>到着駅</th><th>費用（円）</th><th></th>
+              <th>日付</th><th>出発駅</th><th>到着駅</th><th>費用（円）</th><th>領収書</th><th></th>
             </tr>
           </thead>
           <tbody>
             {records.length === 0 ? (
-              <tr><td colSpan={5} className="no-record">データがありません</td></tr>
+              <tr><td colSpan={6} className="no-record">データがありません</td></tr>
             ) : (
               records.map((r, i) => (
                 <tr key={i}>
@@ -131,8 +300,23 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
                       </span>
                     )}
                   </td>
-                  <td>{r.from}</td><td>{r.to}</td>
+                  <td>{r.from}</td>
+                  <td>{r.to}</td>
                   <td>¥{Number(r.amount).toLocaleString()}</td>
+                  <td>
+                    {/* 領収書画像がある場合はアイコンを表示、クリックで拡大 */}
+                    {r.receiptImage ? (
+                      <button
+                        className="btn-receipt-view"
+                        onClick={() => setViewReceiptUrl(r.receiptImage!)}
+                        title="領収書を表示"
+                      >
+                        📎
+                      </button>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                  </td>
                   <td>
                     {deleteConfirmIndex === i ? (
                       <span className="delete-confirm">
@@ -150,13 +334,26 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
           {records.length > 0 && (
             <tfoot>
               <tr className="total-row">
-                <td colSpan={4}>合計</td>
+                <td colSpan={3}>合計</td>
                 <td>¥{total.toLocaleString()}</td>
+                <td colSpan={2}></td>
               </tr>
             </tfoot>
           )}
         </table>
       </div>
+
+      {/* 領収書の拡大表示モーダル（背景クリックで閉じる） */}
+      {viewReceiptUrl && (
+        <div className="receipt-modal" onClick={() => setViewReceiptUrl(null)}>
+          <div className="receipt-modal-inner" onClick={e => e.stopPropagation()}>
+            <button className="receipt-modal-close" onClick={() => setViewReceiptUrl(null)}>
+              ✕ 閉じる
+            </button>
+            <img src={viewReceiptUrl} alt="領収書" className="receipt-modal-img" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

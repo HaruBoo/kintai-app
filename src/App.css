@@ -543,6 +543,218 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
 .btn-download:hover { background-color: #006064; }
 
 /* ==========================================
+   AI分析 APIキー設定エリア
+   ========================================== */
+.api-key-section {
+  background-color: var(--bg-form);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.api-key-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.api-key-label {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--text-heading);
+}
+
+/* APIキー入力欄は社員番号より広め */
+.api-key-input {
+  width: 280px !important;
+}
+
+/* ==========================================
+   領収書アップロード・AI分析
+   ========================================== */
+
+/* ファイル選択ボタン＋プレビューの横並びコンテナ */
+.receipt-upload-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* 実際の file input は非表示にする */
+.receipt-file-input {
+  display: none;
+}
+
+/* labelをボタンっぽく見せる */
+.receipt-file-label {
+  display: inline-block;
+  padding: 8px 16px;
+  font-size: 13px;
+  background-color: var(--bg-container);
+  border: 2px solid var(--border-light);
+  border-radius: 8px;
+  color: var(--text-heading);
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+  white-space: nowrap;
+}
+
+.receipt-file-label:hover {
+  border-color: var(--text-accent);
+  background-color: var(--bg-form);
+}
+
+/* 選択した画像のサムネイル */
+.receipt-preview {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 2px solid var(--border-light);
+  cursor: pointer;
+  transition: border-color 0.2s, opacity 0.2s;
+}
+
+.receipt-preview:hover {
+  border-color: var(--text-accent);
+  opacity: 0.85;
+}
+
+/* 画像を削除するXボタン */
+.btn-receipt-clear {
+  padding: 4px 8px;
+  font-size: 13px;
+  background: none;
+  border: 1px solid #e57373;
+  border-radius: 6px;
+  color: #e57373;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.2s;
+}
+
+.btn-receipt-clear:hover {
+  background-color: #e57373;
+  color: white;
+}
+
+/* AI分析ボタンとヒント・エラーのエリア */
+.analyze-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* AI分析ボタン */
+.btn-analyze {
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: bold;
+  background-color: #7c3aed;  /* 紫：AIらしい色 */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.btn-analyze:hover:not(:disabled) {
+  background-color: #6d28d9;
+}
+
+/* 分析中・APIキーなしのときはグレーアウト */
+.btn-analyze:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 「APIキーを入力してください」の案内文 */
+.analyze-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* エラーメッセージ */
+.analyze-error {
+  font-size: 12px;
+  color: #e57373;
+}
+
+/* テーブル内の領収書アイコンボタン */
+.btn-receipt-view {
+  padding: 4px 8px;
+  font-size: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.btn-receipt-view:hover {
+  transform: scale(1.2);
+}
+
+/* ==========================================
+   領収書拡大表示モーダル
+   ========================================== */
+
+/* 背景オーバーレイ（半透明・クリックで閉じる） */
+.receipt-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* モーダルのコンテンツ部分 */
+.receipt-modal-inner {
+  background-color: var(--bg-container);
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  overflow: auto;
+}
+
+/* 閉じるボタン */
+.receipt-modal-close {
+  padding: 6px 16px;
+  font-size: 14px;
+  background-color: var(--bg-form);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+.receipt-modal-close:hover {
+  border-color: var(--text-accent);
+}
+
+/* 拡大画像 */
+.receipt-modal-img {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+/* ==========================================
    交通費フォーム
    ========================================== */
 .page-title {
@@ -671,4 +883,11 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   .form-row label { width: auto; font-size: clamp(12px, 3vw, 14px); }
   .form-input { width: 100%; font-size: clamp(13px, 3.5vw, 15px); }
   .btn-add { font-size: clamp(14px, 3.5vw, 16px); padding: 10px; }
+
+  /* APIキー・領収書 */
+  .api-key-section { padding: 12px; }
+  .api-key-input { width: 100% !important; }
+  .receipt-upload-area { gap: 8px; }
+  .receipt-modal-inner { padding: 12px; }
+  .btn-analyze { padding: 8px 14px; font-size: 13px; }
 }
