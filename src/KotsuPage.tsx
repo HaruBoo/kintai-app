@@ -4,6 +4,7 @@ import { todayISO, formatDateShort, dateJPtoISO } from './utils/date'
 import { downloadCSV } from './utils/csv'
 import { loadFromStorage, saveToStorage, getKotsuKey } from './utils/storage'
 import { analyzeReceipt } from './services/receiptAnalyzer'
+import { ocrReceipt } from './services/ocrAnalyzer'
 
 type Props = {
   viewYear: number
@@ -39,6 +40,13 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
   // AI分析の状態
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
+
+  // OCRの状態
+  const [isOcring, setIsOcring] = useState(false)
+  const [ocrProgress, setOcrProgress] = useState(0)     // 0〜100
+  const [ocrRawText, setOcrRawText] = useState<string | null>(null)   // 読み取ったテキスト（確認用）
+  const [showRawText, setShowRawText] = useState(false)  // 生テキストの表示/非表示
+  const [ocrError, setOcrError] = useState<string | null>(null)
 
   // Anthropic APIキー（localStorageに保存）
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('anthropicApiKey') ?? '')
@@ -91,6 +99,33 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
       setAnalyzeError(err instanceof Error ? err.message : '分析に失敗しました')
     } finally {
       setIsAnalyzing(false)
+    }
+  }
+
+  // OCRで画像からテキストを読み取り、フォームに反映する
+  const handleOcr = async () => {
+    if (!receiptDataUrl) return
+    setIsOcring(true)
+    setOcrProgress(0)
+    setOcrError(null)
+    setOcrRawText(null)
+
+    try {
+      const result = await ocrReceipt(receiptDataUrl, setOcrProgress)
+
+      // 読み取り結果をフォームに反映（ユーザーが後から編集できる）
+      if (result.date)   setDateISO(result.date)
+      if (result.from)   setFromInput(result.from)
+      if (result.to)     setToInput(result.to)
+      if (result.amount) setAmountInput(result.amount)
+
+      // 生テキストも保存（「何が読み取れたか」確認用）
+      setOcrRawText(result.rawText)
+    } catch (err) {
+      setOcrError(err instanceof Error ? err.message : 'OCR読み取りに失敗しました')
+    } finally {
+      setIsOcring(false)
+      setOcrProgress(0)
     }
   }
 
@@ -219,25 +254,60 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
           </div>
         </div>
 
-        {/* AI分析ボタン（画像が選択されているときだけ表示） */}
+        {/* 分析ボタンエリア（画像が選択されているときだけ表示） */}
         {receiptDataUrl && (
           <div className="form-row">
             <label></label>
             <div className="analyze-area">
+
+              {/* OCRボタン：APIキー不要 */}
+              <button
+                className="btn-ocr"
+                onClick={handleOcr}
+                disabled={isOcring || isAnalyzing}
+              >
+                {isOcring ? `📖 読み取り中 ${ocrProgress}%` : '📷 OCRで読み取り'}
+              </button>
+
+              {/* OCR進捗バー */}
+              {isOcring && (
+                <div className="ocr-progress-bar">
+                  <div className="ocr-progress-fill" style={{ width: `${ocrProgress}%` }} />
+                </div>
+              )}
+
+              {/* AIで分析ボタン：APIキーが必要 */}
               <button
                 className="btn-analyze"
                 onClick={handleAnalyze}
-                disabled={!apiKey || isAnalyzing}
+                disabled={!apiKey || isAnalyzing || isOcring}
               >
                 {isAnalyzing ? '⏳ 分析中...' : '🤖 AIで分析'}
               </button>
-              {/* APIキーが未入力の場合の案内 */}
               {!apiKey && (
-                <span className="analyze-hint">上のAPIキーを入力すると使えます</span>
+                <span className="analyze-hint">AIは上のAPIキーが必要</span>
               )}
+
               {/* エラーメッセージ */}
-              {analyzeError && (
-                <span className="analyze-error">⚠️ {analyzeError}</span>
+              {ocrError && <span className="analyze-error">⚠️ {ocrError}</span>}
+              {analyzeError && <span className="analyze-error">⚠️ {analyzeError}</span>}
+            </div>
+          </div>
+        )}
+
+        {/* OCRの生テキスト（読み取り後に表示、確認・参考用） */}
+        {ocrRawText && (
+          <div className="form-row">
+            <label></label>
+            <div className="ocr-raw-area">
+              <button
+                className="ocr-raw-toggle"
+                onClick={() => setShowRawText(v => !v)}
+              >
+                {showRawText ? '▲ 読み取りテキストを隠す' : '▼ 読み取りテキストを確認する'}
+              </button>
+              {showRawText && (
+                <pre className="ocr-raw-text">{ocrRawText}</pre>
               )}
             </div>
           </div>
