@@ -8,11 +8,8 @@ import LoginPage from './LoginPage'
 import AdminPage from './AdminPage'
 import SetPasswordPage from './SetPasswordPage'
 import ChangePasswordModal from './components/ChangePasswordModal'
-import ProfileSection from './components/ProfileSection'
-import { emptyProfile } from './services/profileService'
 import { supabase, isInviteFlow } from './services/supabase'
 import { useRole } from './hooks/useRole'
-import type { Profile } from './types/profile'
 import type { Session } from '@supabase/supabase-js'
 
 
@@ -52,8 +49,9 @@ function App() {
   const [viewYear,  setViewYear]  = useState(new Date().getFullYear())
   const [viewMonth, setViewMonth] = useState(new Date().getMonth() + 1)
 
-  // PII: メモリのみ保持。localStorage/sessionStorage/URLには出力しない
-  const [profile, setProfile] = useState<Profile>(emptyProfile)
+  // プロフィール（Supabase から取得）
+  const [empNo, setEmpNo] = useState('')
+  const [name,  setName]  = useState('')
 
   // ロール取得（'admin' | 'employee' | null=読み込み中）
   const role = useRole(session)
@@ -74,6 +72,22 @@ function App() {
     // コンポーネントが消えるときに監視を止める
     return () => subscription.unsubscribe()
   }, [])
+
+  // セッションが確立したらプロフィールを取得する
+  useEffect(() => {
+    if (!session) return
+    supabase
+      .from('profiles')
+      .select('name, emp_no')
+      .eq('id', session.user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setName(data.name    ?? '')
+          setEmpNo(data.emp_no ?? '')
+        }
+      })
+  }, [session])
 
   useEffect(() => {
     const update = () => {
@@ -186,8 +200,13 @@ function App() {
     <div className={`app ${isDark ? 'dark' : ''}`}>
       <div className="container">
 
-        {/* PII入力は ProfileSection コンポーネントに責務を限定 */}
-        <ProfileSection profile={profile} onChange={setProfile} />
+        {/* プロフィール表示（Supabase から取得） */}
+        {(empNo || name) && (
+          <div className="profile-display">
+            {empNo && <span className="profile-display-item"><span className="profile-display-label">社員番号</span>{empNo}</span>}
+            {name  && <span className="profile-display-item"><span className="profile-display-label">氏名</span>{name}</span>}
+          </div>
+        )}
 
         {/* 月切り替え */}
         <div className="month-nav">
@@ -214,22 +233,23 @@ function App() {
           <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
         )}
 
+        {/* カラーモード切り替え */}
+        <div className="mode-toggle" style={{ marginBottom: '8px' }}>
+          <button className={`mode-btn ${colorMode === 'light' ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('light')}>☀️ ライト</button>
+          <button className={`mode-btn ${colorMode === 'auto'  ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('auto')} >🌓 自動</button>
+          <button className={`mode-btn ${colorMode === 'dark'  ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('dark')} >🌙 ダーク</button>
+        </div>
+
         {/* ナビゲーション */}
         <nav className="nav">
           <button className={`nav-tab ${page === 'kintai'  ? 'nav-tab-active' : ''}`} onClick={() => setPage('kintai')} >勤怠</button>
           <button className={`nav-tab ${page === 'kotsu'   ? 'nav-tab-active' : ''}`} onClick={() => setPage('kotsu')}  >交通費</button>
           <button className={`nav-tab ${page === 'payslip' ? 'nav-tab-active' : ''}`} onClick={() => setPage('payslip')}>給与明細</button>
           <button className={`nav-tab ${page === 'profile' ? 'nav-tab-active' : ''}`} onClick={() => setPage('profile')}>プロフィール</button>
-          <div className="nav-spacer" />
-          <div className="mode-toggle">
-            <button className={`mode-btn ${colorMode === 'light' ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('light')}>☀️ ライト</button>
-            <button className={`mode-btn ${colorMode === 'auto'  ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('auto')} >🌓 自動</button>
-            <button className={`mode-btn ${colorMode === 'dark'  ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('dark')} >🌙 ダーク</button>
-          </div>
         </nav>
 
         {/* profile は PIIを扱うページにのみ渡す */}
-        {page === 'kintai'  && <KintaiPage  key={`kintai-${viewYear}-${viewMonth}`} viewYear={viewYear} viewMonth={viewMonth} profile={profile} />}
+        {page === 'kintai'  && <KintaiPage  key={`kintai-${viewYear}-${viewMonth}`} viewYear={viewYear} viewMonth={viewMonth} profile={{ empNo, name }} />}
         {page === 'kotsu'   && <KotsuPage   key={`kotsu-${viewYear}-${viewMonth}`}  viewYear={viewYear} viewMonth={viewMonth} />}
         {page === 'payslip' && <PayslipPage />}
         {page === 'profile' && <ProfilePage />}
