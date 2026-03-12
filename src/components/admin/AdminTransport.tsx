@@ -107,7 +107,7 @@ function AdminTransport() {
   const selectedUser = users.find(u => u.id === selectedId)
   const displayName  = selectedUser?.name || selectedUser?.email || ''
 
-  // CSVダウンロード
+  // 選択中の社員1人分をCSVダウンロード
   const handleDownloadCSV = () => {
     const header = ['日付', '出発駅', '到着駅', '費用（円）', '領収書購入日', '領収書金額（円）']
     const rows   = records.map(r =>
@@ -117,6 +117,49 @@ function AdminTransport() {
     downloadCSV(
       [header, ...rows, footer],
       `交通費_${displayName}_${viewYear}年${viewMonth}月.csv`
+    )
+  }
+
+  // 全社員分を1つのCSVにまとめてダウンロード
+  const handleDownloadAllCSV = async () => {
+    const prefix = `${viewYear}/${viewMonth}/`
+
+    // 全社員の交通費データを一括取得する
+    const { data, error } = await supabase
+      .from('transport')
+      .select('*')
+      .like('date', `${prefix}%`)
+      .order('date')
+
+    if (error || !data) return
+
+    // user_id → 社員名 の対応表を作る
+    const nameMap: Record<string, string> = {}
+    users.forEach(u => { nameMap[u.id] = u.name || u.email })
+
+    const header = ['社員名', '日付', '出発駅', '到着駅', '費用（円）', '領収書購入日', '領収書金額（円）']
+    const rows = data.map(row => [
+      nameMap[row.user_id]  ?? row.user_id,
+      row.date,
+      row.from_station      ?? '',
+      row.to_station        ?? '',
+      row.amount            ?? '',
+      row.receipt_date      ?? '',
+      row.receipt_amount    ?? '',
+    ])
+
+    // 社員ごとの合計行を末尾に追加する
+    const totals: Record<string, number> = {}
+    data.forEach(row => {
+      totals[row.user_id] = (totals[row.user_id] ?? 0) + (Number(row.amount) || 0)
+    })
+    const totalRows = users
+      .filter(u => totals[u.id])
+      .map(u => [u.name || u.email, '', '', '合計', String(totals[u.id]), '', ''])
+
+    downloadCSV(
+      [header, ...rows, ...totalRows],
+      `交通費_全社員_${viewYear}年${viewMonth}月.csv`
     )
   }
 
@@ -156,13 +199,22 @@ function AdminTransport() {
           <button className="month-btn" onClick={nextMonth}>▶</button>
         </div>
 
-        {/* CSVダウンロード */}
+        {/* 1人分ダウンロード */}
         <button
           className="admin-invite-btn"
           onClick={handleDownloadCSV}
           disabled={records.length === 0}
         >
           表をダウンロード
+        </button>
+
+        {/* 全社員一括ダウンロード */}
+        <button
+          className="admin-send-btn"
+          onClick={handleDownloadAllCSV}
+          disabled={users.length === 0}
+        >
+          全社員まとめてダウンロード
         </button>
       </div>
 
