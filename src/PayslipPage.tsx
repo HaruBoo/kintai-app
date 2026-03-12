@@ -28,9 +28,16 @@ function PayslipPage() {
   useEffect(() => {
     const fetchPayslips = async () => {
       setLoading(true)
+
+      // ログイン中のユーザー ID を取得する
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setLoading(false); return }
+
+      // 自分の user_id に一致するレコードだけを取得する
       const { data } = await supabase
         .from('payslips')
         .select('id, year, month, file_path, comment, created_at')
+        .eq('user_id', user.id)
         .order('year',  { ascending: false })
         .order('month', { ascending: false })
       setPayslips((data ?? []) as PayslipRow[])
