@@ -6,32 +6,47 @@ A browser and desktop app to replace Excel-based attendance tracking.
 
 🔗 **[Open App](https://kintai-app-swell.vercel.app)**
 
+---
+
 ## Features
 
-- **Login authentication** (email + password via Supabase Auth)
+### Authentication & Security
+
+- **Email + password login** (Supabase Auth)
 - **Role-based screens** (admin / employee)
-- **Clock in / Clock out** (select time with dropdowns)
-- **Automatic break time calculation** (1 hour deducted when working hours exceed 6)
-- **Monthly data management** (switch months, data saved per month)
-- **Transportation expense tracking** (date, route, and amount)
-- **Receipt image attachment** (download as ZIP)
-- **CSV download** (UTF-8 with BOM for Excel compatibility)
-- **Weekend & holiday row coloring** (Japanese holidays supported)
-- **Light / Dark / Auto color mode**
-- **Mobile responsive design**
-- **Privacy-first design** (employee number and name stored in memory only)
+- **Tab-based screen control** (different UI based on selected tab)
+- **Unauthorized login prevention** (employees are blocked from the admin tab)
+
+### Employee Features
+
+| Feature | Description |
+|---|---|
+| Clock in / Clock out | Select time with dropdowns and punch |
+| Auto break calculation | 1 hour deducted when working hours exceed 6 |
+| Manual break editing | Click cell to edit — work time recalculates automatically |
+| Notes field | Click cell to add and save notes |
+| Monthly navigation | Switch months with ◀ ▶ buttons |
+| Attendance CSV download | UTF-8 with BOM for Excel compatibility |
+| Transportation expenses | Enter date, route, and amount |
+| Receipt image attachment | Attach images, click to enlarge |
+| ZIP download | Download CSV + receipt images as a ZIP file |
+| Weekend & holiday coloring | Sat = blue, Sun = pink, Holiday = orange |
+| Light / Dark / Auto mode | Auto switches based on time of day |
+| Mobile responsive | Works on smartphones |
 
 ### Admin Features
 
-- **User management** (invite users, change roles)
-- **Attendance overview** (view all employees)
-- **Payslip management** (attach files, set destination email, notes, comments)
+| Feature | Description |
+|---|---|
+| User management | View all users, change roles (admin ↔ employee) |
+| Invite new users | Send invitation email by entering an email address |
+| View all attendance | Select an employee and browse their monthly attendance |
+| Download attendance | Export selected employee/month as CSV |
+| Payslip management | Attach files, set recipient email, add notes and comments |
 
 ---
 
-## How to Use
-
-### 1. Login
+## Login
 
 Select "Employee" or "Admin" from the tab on the login screen, then enter your email and password.
 
@@ -44,7 +59,11 @@ Select "Employee" or "Admin" from the tab on the login screen, then enter your e
 
 > Admin accounts can also log in from the "Employee" tab. In that case, the employee screen is shown.
 
-### 2. Clock In / Clock Out
+---
+
+## How to Use
+
+### Clock In / Clock Out
 
 1. Select the desired time using the dropdowns
 2. Press the **Clock In** button
@@ -53,30 +72,26 @@ Select "Employee" or "Admin" from the tab on the login screen, then enter your e
 
 > Punching is only available for the current month. Past and future months are read-only.
 
-### 3. Switch Months
+### Editing Notes & Break Time
 
-Use the ◀ ▶ buttons at the top to navigate between months. Data is saved automatically per month.
+- Click the **notes cell** in the table → type text → press Enter or "Confirm" to save
+- Click the **break time cell** → enter time like `1:00` or `0:30` → confirm to save and recalculate work time
 
-### 4. Download Attendance CSV
+### Transportation Expenses
 
-Click **Download** in the upper right of the table.
+1. Attach a receipt image (optional)
+2. Enter purchase date and amount (optional)
+3. Enter date, departure, destination, and fare
+4. Click **Add** to add to the list
+5. At month end, click **Download CSV** or **ZIP (CSV + images)**
 
-### 5. Transportation Expenses
+### Admin: View Attendance
 
-Switch to the **Transportation** tab in the top navigation.
-
-1. Enter the date, departure, destination, and amount
-2. Attach a receipt image (optional)
-3. Click **Add** to add to the list
-4. At month end, click **Download** to export as CSV + images in a ZIP file
-
-### 6. Color Mode
-
-Use the buttons on the right side of the navigation bar:
-
-- ☀️ Light — Always bright
-- 🌓 Auto — Light from 6:00–18:00, dark otherwise
-- 🌙 Dark — Always dark
+1. Log in from the Admin tab
+2. Open the **Attendance** tab
+3. Select an employee from the dropdown
+4. Switch months with ◀ ▶ to browse data
+5. Click **Download** to export the selected employee/month as CSV
 
 ---
 
@@ -87,17 +102,20 @@ Use the buttons on the right side of the navigation bar:
 | Framework | React 19 + TypeScript |
 | Build Tool | Vite 7 |
 | Desktop | Tauri |
-| Auth & DB | Supabase |
-| Server Logic | Supabase Edge Functions |
+| Auth & DB | Supabase (PostgreSQL + Auth) |
+| Server Logic | Supabase Edge Functions (Deno) |
 | Deployment | Vercel |
 | Holiday Data | @holiday-jp/holiday_jp |
+| ZIP Generation | JSZip |
 
-## Privacy Design Policy
+---
 
-- Employee number and name are held in **React state (memory) only**
-- **Never written** to `localStorage`, `sessionStorage`, or URL params
-- All PII operations are centralized in `src/services/profileService.ts`
-- PII input UI is isolated to `src/components/ProfileSection.tsx`
+## Security Design
+
+- **RLS (Row Level Security)**: Users can only read/write their own data
+- **Edge Functions**: Admin operations (invite, delete) are processed server-side
+- **Role validation**: Tab selection is verified against actual role on login
+- **PII protection**: Employee number and name are stored in memory only, never in the database
 
 ---
 
