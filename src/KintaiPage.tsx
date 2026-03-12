@@ -242,6 +242,16 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
     if (!user) return
 
     const clockOut = toHHMM(clockOutH, clockOutM)
+
+    // 退勤時刻が出勤時刻より早い場合はエラーを出す
+    const toMin = (t: string) => {
+      const [h, m] = t.split(':').map(Number)
+      return h * 60 + m
+    }
+    if (toMin(clockOut) <= toMin(todayRecord.clockIn)) {
+      alert(`退勤時刻（${clockOut}）が出勤時刻（${todayRecord.clockIn}）より早いか同じです。\n正しい時刻を選んでください。`)
+      return
+    }
     const { breakTime, workTime } = calcTimes(todayRecord.clockIn, clockOut)
 
     // DB を更新する

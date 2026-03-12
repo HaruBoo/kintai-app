@@ -76,8 +76,10 @@ Deno.serve(async (req) => {
     }
 
     // 新しいユーザーを招待する（確認メールが送られる）
+    // redirectTo: 招待メールのリンクをクリックしたときに飛ぶ URL
     const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      data: { role }
+      data: { role },
+      redirectTo: 'https://kintai-app-swell.vercel.app',
     })
 
     if (error) {
