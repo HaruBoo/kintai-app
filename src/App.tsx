@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import KintaiPage from './KintaiPage'
 import KotsuPage from './KotsuPage'
+import PayslipPage from './PayslipPage'
 import LoginPage from './LoginPage'
 import AdminPage from './AdminPage'
 import SetPasswordPage from './SetPasswordPage'
@@ -22,7 +23,7 @@ const isDaytime = () => {
 }
 
 function App() {
-  const [page, setPage] = useState<'kintai' | 'kotsu'>('kintai')
+  const [page, setPage] = useState<'kintai' | 'kotsu' | 'payslip'>('kintai')
 
   // ログインセッション（null = 未ログイン）
   const [session, setSession] = useState<Session | null>(null)
@@ -214,8 +215,9 @@ function App() {
 
         {/* ナビゲーション */}
         <nav className="nav">
-          <button className={`nav-tab ${page === 'kintai' ? 'nav-tab-active' : ''}`} onClick={() => setPage('kintai')}>勤怠</button>
-          <button className={`nav-tab ${page === 'kotsu'  ? 'nav-tab-active' : ''}`} onClick={() => setPage('kotsu')} >交通費</button>
+          <button className={`nav-tab ${page === 'kintai'  ? 'nav-tab-active' : ''}`} onClick={() => setPage('kintai')} >勤怠</button>
+          <button className={`nav-tab ${page === 'kotsu'   ? 'nav-tab-active' : ''}`} onClick={() => setPage('kotsu')}  >交通費</button>
+          <button className={`nav-tab ${page === 'payslip' ? 'nav-tab-active' : ''}`} onClick={() => setPage('payslip')}>給与明細</button>
           <div className="nav-spacer" />
           <div className="mode-toggle">
             <button className={`mode-btn ${colorMode === 'light' ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('light')}>☀️ ライト</button>
@@ -225,10 +227,9 @@ function App() {
         </nav>
 
         {/* profile は PIIを扱うページにのみ渡す */}
-        {page === 'kintai'
-          ? <KintaiPage key={`kintai-${viewYear}-${viewMonth}`} viewYear={viewYear} viewMonth={viewMonth} profile={profile} />
-          : <KotsuPage  key={`kotsu-${viewYear}-${viewMonth}`}  viewYear={viewYear} viewMonth={viewMonth} />
-        }
+        {page === 'kintai'  && <KintaiPage  key={`kintai-${viewYear}-${viewMonth}`} viewYear={viewYear} viewMonth={viewMonth} profile={profile} />}
+        {page === 'kotsu'   && <KotsuPage   key={`kotsu-${viewYear}-${viewMonth}`}  viewYear={viewYear} viewMonth={viewMonth} />}
+        {page === 'payslip' && <PayslipPage />}
 
       </div>
     </div>
