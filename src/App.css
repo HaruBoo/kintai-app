@@ -1307,7 +1307,61 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   .admin-send-btn    { width: 100%; }
 }
 
-/* ===== 勤怠提出・承認エリア ===== */
+/* ===== 勤怠提出パネル（テーブル下） ===== */
+.submission-panel {
+  margin-top: 24px;
+}
+
+.submission-panel-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: 12px;
+  border: 2px solid var(--border-light);
+  background: var(--bg-row-even);
+  flex-wrap: wrap;
+}
+
+/* 状態ごとの背景色 */
+.submission-panel-inner.submitted      { border-color: #f57c00; background: #fff8e1; }
+.submission-panel-inner.leader-approved { border-color: #1565c0; background: #e3f2fd; }
+.submission-panel-inner.approved       { border-color: #2e7d32; background: #e8f5e9; }
+.submission-panel-inner.rejected       { border-color: #c62828; background: #fce4ec; }
+
+.submission-panel-text { flex: 1; }
+
+.submission-panel-title {
+  font-size: 1rem;
+  font-weight: bold;
+  color: var(--text-heading);
+  margin: 0 0 4px 0;
+}
+
+.submission-panel-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* 大きな提出ボタン */
+.btn-submit-large {
+  padding: 12px 32px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+.btn-submit-large:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-submit-large:hover:not(:disabled) { opacity: 0.85; }
+
+/* ===== 勤怠提出・承認エリア（旧） ===== */
 .submission-area {
   margin: 12px 0 20px 0;
   display: flex;

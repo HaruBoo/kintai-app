@@ -424,37 +424,6 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
         </div>
       </div>
 
-      {/* 提出ステータス・ボタン */}
-      <div className="submission-area">
-        {submissionStatus === 'none' && (
-          <button className="btn-submit" onClick={handleSubmit} disabled={submitting || records.length === 0}>
-            {submitting ? '提出中...' : '✋ この月の勤怠を提出する'}
-          </button>
-        )}
-        {submissionStatus === 'submitted' && (
-          <div className="submission-status submitted">
-            <span>📬 リーダー承認待ち</span>
-            <button className="btn-cancel-submit" onClick={handleCancelSubmit}>提出を取り消す</button>
-          </div>
-        )}
-        {submissionStatus === 'leader_approved' && (
-          <div className="submission-status leader-approved">
-            <span>📋 管理者承認待ち</span>
-          </div>
-        )}
-        {submissionStatus === 'approved' && (
-          <div className="submission-status approved">
-            <span>✅ 最終承認済み</span>
-          </div>
-        )}
-        {submissionStatus === 'rejected' && (
-          <div className="submission-status rejected">
-            <span>❌ 差し戻し：{rejectReason}</span>
-            <button className="btn-cancel-submit" onClick={handleCancelSubmit}>再提出する</button>
-          </div>
-        )}
-      </div>
-
       <div className="table-scroll">
         {loading ? (
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
@@ -587,6 +556,55 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
               )}
             </tbody>
           </table>
+        )}
+      </div>
+
+      {/* 提出ボタン・ステータス（テーブルの下に大きく表示） */}
+      <div className="submission-panel">
+        {submissionStatus === 'none' && (
+          <div className="submission-panel-inner">
+            <div className="submission-panel-text">
+              <p className="submission-panel-title">勤怠の提出</p>
+              <p className="submission-panel-desc">内容を確認したら、リーダーに提出してください。提出後は編集できなくなります。</p>
+            </div>
+            <button
+              className="btn-submit-large"
+              onClick={handleSubmit}
+              disabled={submitting || records.length === 0}
+            >
+              {submitting ? '提出中...' : '提出する'}
+            </button>
+          </div>
+        )}
+        {submissionStatus === 'submitted' && (
+          <div className="submission-panel-inner submitted">
+            <div className="submission-panel-text">
+              <p className="submission-panel-title">📬 リーダー承認待ち</p>
+              <p className="submission-panel-desc">リーダーが確認中です。承認されるまでお待ちください。</p>
+            </div>
+            <button className="btn-cancel-submit" onClick={handleCancelSubmit}>提出を取り消す</button>
+          </div>
+        )}
+        {submissionStatus === 'leader_approved' && (
+          <div className="submission-panel-inner leader-approved">
+            <p className="submission-panel-title">📋 管理者承認待ち</p>
+            <p className="submission-panel-desc">リーダーが承認しました。管理者の最終確認をお待ちください。</p>
+          </div>
+        )}
+        {submissionStatus === 'approved' && (
+          <div className="submission-panel-inner approved">
+            <p className="submission-panel-title">✅ 最終承認済み</p>
+            <p className="submission-panel-desc">この月の勤怠は承認されました。</p>
+          </div>
+        )}
+        {submissionStatus === 'rejected' && (
+          <div className="submission-panel-inner rejected">
+            <div className="submission-panel-text">
+              <p className="submission-panel-title">❌ 差し戻し</p>
+              <p className="submission-panel-desc">理由：{rejectReason}</p>
+            </div>
+            <button className="btn-submit-large" onClick={handleCancelSubmit}>修正して再提出する</button>
+          </div>
         )}
       </div>
     </div>
