@@ -13,6 +13,9 @@ type Props = {
   profile: Profile
 }
 
+// 提出状態の型
+type SubmissionStatus = 'none' | 'submitted' | 'approved' | 'rejected'
+
 function KintaiPage({ viewYear, viewMonth, profile }: Props) {
   const [currentTime, setCurrentTime] = useState(new Date())
 
@@ -35,6 +38,10 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
   // 休憩時間編集
   const [editBreakIndex, setEditBreakIndex] = useState<number | null>(null)
   const [editBreakValue, setEditBreakValue] = useState('')
+  // 提出状態
+  const [submissionStatus,   setSubmissionStatus]   = useState<SubmissionStatus>('none')
+  const [rejectReason,       setRejectReason]       = useState<string>('')
+  const [submitting,         setSubmitting]         = useState(false)
 
   // 1秒ごとに時刻を更新
   useEffect(() => {
@@ -84,6 +91,32 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
     fetchRecords()
   }, [fetchRecords])
 
+  // 提出状態を取得する
+  const fetchSubmission = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data } = await supabase
+      .from('attendance_submissions')
+      .select('status, reject_reason')
+      .eq('user_id', user.id)
+      .eq('year', viewYear)
+      .eq('month', viewMonth)
+      .maybeSingle()
+
+    if (data) {
+      setSubmissionStatus(data.status as SubmissionStatus)
+      setRejectReason(data.reject_reason ?? '')
+    } else {
+      setSubmissionStatus('none')
+      setRejectReason('')
+    }
+  }, [viewYear, viewMonth])
+
+  useEffect(() => {
+    fetchSubmission()
+  }, [fetchSubmission])
+
   const dateStr      = formatDateLong(currentTime)
   const todayKey     = formatDateShort(currentTime)
   const todayWeekday = getWeekday(currentTime)
@@ -94,6 +127,9 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
 
   // 勤務日数（出勤打刻がある日だけカウント）
   const workingDays = records.filter(r => r.clockIn !== '-').length
+
+  // 提出済み or 承認済みのときは編集できない
+  const isLocked = submissionStatus === 'submitted' || submissionStatus === 'approved'
 
   // 日付をクリックして編集モードにする
   const handleDateClick = (index: number, currentDate: string) => {
@@ -249,6 +285,52 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
     }
   }
 
+  // 勤怠を提出する
+  const handleSubmit = async () => {
+    if (!confirm(`${viewYear}年${viewMonth}月の勤怠を提出しますか？\n提出後は管理者が承認するまで編集できません。`)) return
+    setSubmitting(true)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setSubmitting(false); return }
+
+    const { error } = await supabase
+      .from('attendance_submissions')
+      .upsert({
+        user_id:      user.id,
+        year:         viewYear,
+        month:        viewMonth,
+        status:       'submitted',
+        reject_reason: null,
+        submitted_at: new Date().toISOString(),
+        reviewed_at:  null,
+      }, { onConflict: 'user_id,year,month' })
+
+    if (error) {
+      alert('提出に失敗しました: ' + error.message)
+    } else {
+      setSubmissionStatus('submitted')
+    }
+    setSubmitting(false)
+  }
+
+  // 提出を取り消す（差し戻しされた場合も使う）
+  const handleCancelSubmit = async () => {
+    if (!confirm('提出を取り消しますか？')) return
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    await supabase
+      .from('attendance_submissions')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('year', viewYear)
+      .eq('month', viewMonth)
+
+    setSubmissionStatus('none')
+    setRejectReason('')
+  }
+
   // 退勤打刻
   const handleClockOut = async () => {
     if (!isCurrentMonth) { alert('過去・未来の月には打刻できません'); return }
@@ -296,8 +378,8 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
         <p className="swell">Swell</p>
       </div>
 
-      {/* 打刻ボタン（今月のみ表示） */}
-      {isCurrentMonth && (
+      {/* 打刻ボタン（今月・未提出のみ表示） */}
+      {isCurrentMonth && !isLocked && (
         <div className="button-group">
           <div className="punch-area">
             <div className="time-select-group">
@@ -342,6 +424,32 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
         </div>
       </div>
 
+      {/* 提出ステータス・ボタン */}
+      <div className="submission-area">
+        {submissionStatus === 'none' && (
+          <button className="btn-submit" onClick={handleSubmit} disabled={submitting || records.length === 0}>
+            {submitting ? '提出中...' : '✋ この月の勤怠を提出する'}
+          </button>
+        )}
+        {submissionStatus === 'submitted' && (
+          <div className="submission-status submitted">
+            <span>📬 承認待ち</span>
+            <button className="btn-cancel-submit" onClick={handleCancelSubmit}>提出を取り消す</button>
+          </div>
+        )}
+        {submissionStatus === 'approved' && (
+          <div className="submission-status approved">
+            <span>✅ 承認済み</span>
+          </div>
+        )}
+        {submissionStatus === 'rejected' && (
+          <div className="submission-status rejected">
+            <span>❌ 差し戻し：{rejectReason}</span>
+            <button className="btn-cancel-submit" onClick={handleCancelSubmit}>再提出する</button>
+          </div>
+        )}
+      </div>
+
       <div className="table-scroll">
         {loading ? (
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
@@ -379,22 +487,26 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
 
                     {/* 勤務区分（プルダウンで即時保存） */}
                     <td>
-                      <select
-                        className="work-type-select"
-                        value={r.workType}
-                        onChange={e => handleWorkTypeSave(i, e.target.value)}
-                      >
-                        <option value="">—</option>
-                        {WORK_TYPES.map(t => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
+                      {isLocked ? (
+                        <span>{r.workType || '—'}</span>
+                      ) : (
+                        <select
+                          className="work-type-select"
+                          value={r.workType}
+                          onChange={e => handleWorkTypeSave(i, e.target.value)}
+                        >
+                          <option value="">—</option>
+                          {WORK_TYPES.map(t => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      )}
                     </td>
 
                     <td>{r.clockIn}</td>
                     <td>{r.clockOut}</td>
 
-                    {/* 休憩時間（クリックで編集） */}
+                    {/* 休憩時間（ロック時は表示のみ） */}
                     <td>
                       {editBreakIndex === i ? (
                         <span className="date-edit">
@@ -410,6 +522,8 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
                           <button className="btn-delete-yes" onClick={() => handleBreakSave(i)}>確定</button>
                           <button className="btn-delete-no" onClick={() => setEditBreakIndex(null)}>取消</button>
                         </span>
+                      ) : isLocked ? (
+                        <span>{r.breakTime}</span>
                       ) : (
                         <span
                           className="editable-cell"
@@ -423,7 +537,7 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
 
                     <td>{r.workTime}</td>
 
-                    {/* 備考（クリックで編集） */}
+                    {/* 備考（ロック時は表示のみ） */}
                     <td>
                       {editNoteIndex === i ? (
                         <span className="date-edit">
@@ -439,6 +553,8 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
                           <button className="btn-delete-yes" onClick={() => handleNoteSave(i)}>確定</button>
                           <button className="btn-delete-no" onClick={() => setEditNoteIndex(null)}>取消</button>
                         </span>
+                      ) : isLocked ? (
+                        <span>{r.note || '—'}</span>
                       ) : (
                         <span
                           className="editable-cell"
@@ -450,13 +566,15 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
                       )}
                     </td>
                     <td>
-                      {deleteConfirmIndex === i ? (
-                        <span className="delete-confirm">
-                          <button className="btn-delete-yes" onClick={() => handleDelete(i)}>はい</button>
-                          <button className="btn-delete-no" onClick={() => setDeleteConfirmIndex(null)}>キャンセル</button>
-                        </span>
-                      ) : (
-                        <button className="btn-delete" onClick={() => setDeleteConfirmIndex(i)}>削除</button>
+                      {!isLocked && (
+                        deleteConfirmIndex === i ? (
+                          <span className="delete-confirm">
+                            <button className="btn-delete-yes" onClick={() => handleDelete(i)}>はい</button>
+                            <button className="btn-delete-no" onClick={() => setDeleteConfirmIndex(null)}>キャンセル</button>
+                          </span>
+                        ) : (
+                          <button className="btn-delete" onClick={() => setDeleteConfirmIndex(i)}>削除</button>
+                        )
                       )}
                     </td>
                   </tr>

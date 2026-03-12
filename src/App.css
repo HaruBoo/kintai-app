@@ -1307,6 +1307,76 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   .admin-send-btn    { width: 100%; }
 }
 
+/* ===== 勤怠提出・承認エリア ===== */
+.submission-area {
+  margin: 12px 0 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* 提出ボタン */
+.btn-submit {
+  padding: 10px 24px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 提出取消ボタン */
+.btn-cancel-submit {
+  padding: 6px 14px;
+  background: none;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+/* ステータス表示 */
+.submission-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+.submission-status.submitted { background: #fff8e1; color: #f57c00; }
+.submission-status.approved  { background: #e8f5e9; color: #2e7d32; }
+.submission-status.rejected  { background: #fce4ec; color: #c62828; }
+
+/* 管理者側のバッジ */
+.submission-admin-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: var(--bg-row-even);
+  border-radius: 10px;
+}
+.submission-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+.submission-badge.none      { background: #f5f5f5; color: #999; }
+.submission-badge.submitted { background: #fff8e1; color: #f57c00; }
+.submission-badge.approved  { background: #e8f5e9; color: #2e7d32; }
+.submission-badge.rejected  { background: #fce4ec; color: #c62828; }
+
 /* ===== 勤務区分プルダウン ===== */
 .work-type-select {
   padding: 3px 6px;

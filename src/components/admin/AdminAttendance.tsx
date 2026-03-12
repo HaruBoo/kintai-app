@@ -19,6 +19,12 @@ type UserRow = {
   name: string
 }
 
+// 提出状態の型
+type SubmissionRow = {
+  status: string
+  reject_reason: string | null
+}
+
 // 勤怠レコードの型
 type AttendanceRow = {
   date: string
@@ -46,6 +52,12 @@ function AdminAttendance() {
   // 読み込み中フラグ
   const [loadingUsers,   setLoadingUsers]   = useState(true)
   const [loadingRecords, setLoadingRecords] = useState(false)
+
+  // 提出状態
+  const [submission,    setSubmission]    = useState<SubmissionRow | null>(null)
+  const [rejectReason,  setRejectReason]  = useState('')
+  const [showRejectBox, setShowRejectBox] = useState(false)
+  const [reviewing,     setReviewing]     = useState(false)
 
   // 社員一覧を取得する
   useEffect(() => {
@@ -100,6 +112,57 @@ function AdminAttendance() {
   useEffect(() => {
     fetchRecords()
   }, [fetchRecords])
+
+  // 選択中の社員・月の提出状態を取得する
+  const fetchSubmission = useCallback(async () => {
+    if (!selectedId) return
+    const { data } = await supabase
+      .from('attendance_submissions')
+      .select('status, reject_reason')
+      .eq('user_id', selectedId)
+      .eq('year', viewYear)
+      .eq('month', viewMonth)
+      .maybeSingle()
+    setSubmission(data ?? null)
+    setShowRejectBox(false)
+    setRejectReason('')
+  }, [selectedId, viewYear, viewMonth])
+
+  useEffect(() => {
+    fetchSubmission()
+  }, [fetchSubmission])
+
+  // 承認する
+  const handleApprove = async () => {
+    if (!confirm('この月の勤怠を承認しますか？')) return
+    setReviewing(true)
+    await supabase
+      .from('attendance_submissions')
+      .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+      .eq('user_id', selectedId)
+      .eq('year', viewYear)
+      .eq('month', viewMonth)
+    setReviewing(false)
+    fetchSubmission()
+  }
+
+  // 差し戻す
+  const handleReject = async () => {
+    if (!rejectReason.trim()) { alert('差し戻し理由を入力してください'); return }
+    setReviewing(true)
+    await supabase
+      .from('attendance_submissions')
+      .update({
+        status:        'rejected',
+        reject_reason: rejectReason,
+        reviewed_at:   new Date().toISOString(),
+      })
+      .eq('user_id', selectedId)
+      .eq('year', viewYear)
+      .eq('month', viewMonth)
+    setReviewing(false)
+    fetchSubmission()
+  }
 
   // 月を前後に移動する
   const prevMonth = () => {
@@ -220,6 +283,38 @@ function AdminAttendance() {
         >
           全社員まとめてダウンロード
         </button>
+      </div>
+
+      {/* 提出状態・承認エリア */}
+      <div className="submission-admin-area">
+        {!submission && (
+          <span className="submission-badge none">未提出</span>
+        )}
+        {submission?.status === 'submitted' && (
+          <>
+            <span className="submission-badge submitted">📬 承認待ち</span>
+            <button className="admin-invite-btn" onClick={handleApprove} disabled={reviewing}>承認する</button>
+            <button className="admin-delete-btn" onClick={() => setShowRejectBox(v => !v)}>差し戻す</button>
+            {showRejectBox && (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
+                <input
+                  className="admin-input"
+                  style={{ flex: 1 }}
+                  placeholder="差し戻し理由を入力"
+                  value={rejectReason}
+                  onChange={e => setRejectReason(e.target.value)}
+                />
+                <button className="admin-delete-btn" onClick={handleReject} disabled={reviewing}>送信</button>
+              </div>
+            )}
+          </>
+        )}
+        {submission?.status === 'approved' && (
+          <span className="submission-badge approved">✅ 承認済み</span>
+        )}
+        {submission?.status === 'rejected' && (
+          <span className="submission-badge rejected">❌ 差し戻し済み：{submission.reject_reason}</span>
+        )}
       </div>
 
       {/* 勤怠テーブル */}
