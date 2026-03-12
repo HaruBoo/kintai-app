@@ -5,6 +5,7 @@ import KotsuPage from './KotsuPage'
 import LoginPage from './LoginPage'
 import AdminPage from './AdminPage'
 import SetPasswordPage from './SetPasswordPage'
+import ChangePasswordModal from './components/ChangePasswordModal'
 import ProfileSection from './components/ProfileSection'
 import { emptyProfile } from './services/profileService'
 import { supabase, isInviteFlow } from './services/supabase'
@@ -31,6 +32,9 @@ function App() {
 
   // 招待リンクから来たユーザーにパスワード設定画面を表示するフラグ
   const [needsPasswordSetup, setNeedsPasswordSetup] = useState(isInviteFlow)
+
+  // パスワード変更モーダルの表示フラグ
+  const [showChangePassword, setShowChangePassword] = useState(false)
 
   // カラーモードのみ localStorage に保存（PIIは保存しない）
   const [colorMode, setColorMode] = useState<ColorMode>(() =>
@@ -152,11 +156,21 @@ function App() {
             <button className={`mode-btn ${colorMode === 'dark'  ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('dark')} >🌙 ダーク</button>
           </div>
 
+          {/* パスワード変更 */}
+          <button className="btn-logout" onClick={() => setShowChangePassword(true)}>
+            パスワード変更
+          </button>
+
           {/* ログアウト */}
           <button className="btn-logout" onClick={() => supabase.auth.signOut()}>
             ログアウト
           </button>
         </div>
+
+        {/* パスワード変更モーダル */}
+        {showChangePassword && (
+          <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+        )}
 
         {/* 管理者コンテンツ */}
         <AdminPage />
@@ -183,12 +197,20 @@ function App() {
           )}
         </div>
 
-        {/* ログアウトボタン（右端） */}
+        {/* パスワード変更・ログアウトボタン（右端） */}
         <div className="logout-area">
+          <button className="btn-logout" onClick={() => setShowChangePassword(true)}>
+            パスワード変更
+          </button>
           <button className="btn-logout" onClick={() => supabase.auth.signOut()}>
             ログアウト
           </button>
         </div>
+
+        {/* パスワード変更モーダル */}
+        {showChangePassword && (
+          <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+        )}
 
         {/* ナビゲーション */}
         <nav className="nav">
