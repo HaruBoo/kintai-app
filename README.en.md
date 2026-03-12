@@ -4,29 +4,38 @@
 
 A browser and desktop app to replace Excel-based attendance tracking.
 
+🔗 **[Open App](https://kintai-app-henna.vercel.app)**
+
 ## Features
 
+- **Login authentication** (email + password via Supabase Auth)
+- **Role-based screens** (admin / employee)
 - **Clock in / Clock out** (select time with dropdowns)
 - **Automatic break time calculation** (1 hour deducted when working hours exceed 6)
 - **Monthly data management** (switch months, data saved per month)
 - **Transportation expense tracking** (date, route, and amount)
+- **Receipt image attachment** (download as ZIP)
 - **CSV download** (UTF-8 with BOM for Excel compatibility)
 - **Weekend & holiday row coloring** (Japanese holidays supported)
 - **Light / Dark / Auto color mode**
 - **Mobile responsive design**
-- **Privacy-first design** (employee number and name are stored in memory only, never in LocalStorage)
+- **Privacy-first design** (employee number and name stored in memory only)
+
+### Admin Features
+
+- **User management** (invite users, change roles)
+- **Attendance overview** (view all employees)
+- **Payslip management** (attach files, set destination email, notes, comments)
 
 ---
 
 ## How to Use
 
-### 1. Enter Your Profile
+### 1. Login
 
-Enter your employee number and name in the fields at the top of the screen.
+Select "Employee" or "Admin" from the tab on the login screen, then enter your email and password.
 
-- The employee number is masked by default (click 👁 to reveal)
-- Your information is held in memory only — **it is cleared when you close the page**
-- Nothing is saved to LocalStorage or the URL
+- Login is rejected if the selected tab does not match your actual role.
 
 ### 2. Clock In / Clock Out
 
@@ -37,38 +46,24 @@ Enter your employee number and name in the fields at the top of the screen.
 
 > Punching is only available for the current month. Past and future months are read-only.
 
-### 3. View and Edit Records
-
-- Click a date in the table to edit it
-- Use the **Delete** button on the right to remove a row (confirmation required)
-
-### 4. Switch Months
+### 3. Switch Months
 
 Use the ◀ ▶ buttons at the top to navigate between months. Data is saved automatically per month.
 
-### 5. Download Attendance CSV
+### 4. Download Attendance CSV
 
 Click **Download** in the upper right of the table.
 
-You can choose how personal information is included:
-
-| Option | Description |
-|---|---|
-| Exclude (default) | Download without employee number or name |
-| Mask number | Include employee number masked (e.g. `1***5`) |
-| Include | Include full employee number and name |
-
-> After downloading, the option automatically resets to "Exclude"
-
-### 6. Transportation Expenses
+### 5. Transportation Expenses
 
 Switch to the **Transportation** tab in the top navigation.
 
 1. Enter the date, departure, destination, and amount
-2. Click **Add** to add to the list
-3. At month end, click **Download** to export as CSV
+2. Attach a receipt image (optional)
+3. Click **Add** to add to the list
+4. At month end, click **Download** to export as CSV + images in a ZIP file
 
-### 7. Color Mode
+### 6. Color Mode
 
 Use the buttons on the right side of the navigation bar:
 
@@ -85,8 +80,10 @@ Use the buttons on the right side of the navigation bar:
 | Framework | React 19 + TypeScript |
 | Build Tool | Vite 7 |
 | Desktop | Tauri |
+| Auth & DB | Supabase |
+| Server Logic | Supabase Edge Functions |
+| Deployment | Vercel |
 | Holiday Data | @holiday-jp/holiday_jp |
-| Data Storage | localStorage (per month, PII excluded) |
 
 ## Privacy Design Policy
 
@@ -94,7 +91,6 @@ Use the buttons on the right side of the navigation bar:
 - **Never written** to `localStorage`, `sessionStorage`, or URL params
 - All PII operations are centralized in `src/services/profileService.ts`
 - PII input UI is isolated to `src/components/ProfileSection.tsx`
-- CSV export policy is managed in `src/components/CsvExport.tsx`
 
 ---
 
@@ -103,6 +99,10 @@ Use the buttons on the right side of the navigation bar:
 ```bash
 # Install dependencies
 npm install
+
+# Create .env file with your Supabase credentials
+# VITE_SUPABASE_URL=...
+# VITE_SUPABASE_ANON_KEY=...
 
 # Start dev server (browser)
 npm run dev

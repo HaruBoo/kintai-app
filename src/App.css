@@ -291,6 +291,109 @@
   cursor: not-allowed;
 }
 
+/* ===== ログイン画面タブ ===== */
+.login-tabs {
+  display: flex;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid var(--border-light);
+}
+
+.login-tab {
+  flex: 1;
+  padding: 10px 0;
+  font-size: 14px;
+  font-weight: bold;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* 一般タブ：選択時は水色 */
+.login-tab--active {
+  background: var(--text-accent);
+  color: #fff;
+}
+
+/* ===== 管理者テーマ（login-page--admin） ===== */
+
+/* 背景を紺色に */
+.login-page--admin {
+  background-color: #162032;
+}
+
+/* カードも紺色系 */
+.login-page--admin .login-card {
+  background-color: #1e2d4e;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* タブ枠を紺系に */
+.login-page--admin .login-tabs {
+  border-color: #2e4070;
+}
+
+/* 非選択タブの文字を薄い水色に */
+.login-page--admin .login-tab {
+  color: #7a9cc4;
+}
+
+/* 管理者タブ選択時は黄色背景 */
+.login-page--admin .login-tab--active {
+  background: #f5c518;
+  color: #162032;
+}
+
+/* ロゴ・見出しを黄色に */
+.login-page--admin .login-logo {
+  color: #f5c518;
+}
+
+/* サブタイトルを薄い黄色に */
+.login-page--admin .login-subtitle {
+  color: #c8a84b;
+}
+
+/* ラベルを黄色に */
+.login-page--admin .login-field label {
+  color: #f5c518;
+}
+
+/* 入力欄：紺系の背景、黄色ボーダー */
+.login-page--admin .login-input {
+  background-color: #253556;
+  border-color: #2e4070;
+  color: #e8e8e8;
+}
+
+/* フォーカス時は黄色ボーダー */
+.login-page--admin .login-input:focus {
+  border-color: #f5c518;
+}
+
+/* パスワード表示切替ボタン */
+.login-page--admin .toggle-mask-btn {
+  color: #7a9cc4;
+}
+
+/* ログインボタンを黄色に（文字は紺） */
+.login-page--admin .btn-login {
+  background-color: #f5c518;
+  color: #162032;
+}
+
+.login-page--admin .btn-login:hover:not(:disabled) {
+  background-color: #ddb015;
+}
+
+/* エラー文字も読みやすく */
+.login-page--admin .login-error {
+  background-color: #2e1a1a;
+  border-color: #e57373;
+}
+
 /* ログアウトボタンを右端に寄せるエリア */
 .logout-area {
   display: flex;
@@ -998,4 +1101,195 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   /* 領収書 */
   .receipt-upload-area { gap: 8px; }
   .receipt-modal-inner { padding: 12px; }
+}
+
+/* ==========================================
+   管理者画面
+   ========================================== */
+
+/* ヘッダー（ロゴ＋バッジ＋カラーモード＋ログアウト） */
+.admin-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-light);
+  flex-wrap: wrap;
+}
+
+/* 「管理者」バッジ */
+.admin-badge {
+  background: #00bcd4;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 2px 10px;
+  border-radius: 99px;
+  letter-spacing: 0.05em;
+}
+
+/* 管理者タブナビ */
+.admin-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+/* 管理者コンテンツ領域 */
+.admin-content {
+  background: var(--bg-form);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+/* セクション見出し */
+.admin-section-title {
+  font-size: 1rem;
+  font-weight: bold;
+  color: var(--text-heading);
+  margin: 0 0 1rem;
+}
+
+/* ローディング / エラー / 成功 */
+.admin-loading { color: var(--text-muted); }
+.admin-error   { color: #e53935; font-size: 0.9rem; }
+.admin-success { color: #43a047; font-size: 0.9rem; }
+
+/* ユーザー一覧テーブル */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.admin-table th,
+.admin-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-light);
+  text-align: left;
+}
+.admin-table th {
+  background: var(--bg-row-even);
+  color: var(--text-heading);
+  font-weight: bold;
+}
+
+/* ロール選択 */
+.admin-role-select {
+  padding: 4px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: var(--bg-container);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+/* 削除ボタン */
+.admin-delete-btn {
+  background: #ffebee;
+  color: #e53935;
+  border: 1px solid #ef9a9a;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.admin-delete-btn:hover { background: #ffcdd2; }
+
+/* 招待フォーム */
+.admin-invite-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* 汎用テキスト入力 */
+.admin-input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--bg-container);
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 200px;
+}
+
+/* 招待ボタン */
+.admin-invite-btn {
+  background: #00bcd4;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.admin-invite-btn:hover    { background: #0097a7; }
+.admin-invite-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* 給与明細フォーム */
+.admin-payslip-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  max-width: 540px;
+}
+
+/* フォーム行（ラベル＋入力） */
+.admin-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.admin-form-row label {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--text-heading);
+}
+
+/* テキストエリア */
+.admin-textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--bg-container);
+  color: var(--text-primary);
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* ファイル入力 */
+.admin-file-input {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+}
+
+/* 送信ボタン */
+.admin-send-btn {
+  background: #00bcd4;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.admin-send-btn:hover    { background: #0097a7; }
+.admin-send-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* 管理者画面のモバイル対応 */
+@media (max-width: 540px) {
+  .admin-header { flex-direction: column; align-items: flex-start; }
+  .admin-invite-form { flex-direction: column; }
+  .admin-invite-btn  { width: 100%; }
+  .admin-send-btn    { width: 100%; }
 }

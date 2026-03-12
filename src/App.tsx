@@ -3,9 +3,11 @@ import './App.css'
 import KintaiPage from './KintaiPage'
 import KotsuPage from './KotsuPage'
 import LoginPage from './LoginPage'
+import AdminPage from './AdminPage'
 import ProfileSection from './components/ProfileSection'
 import { emptyProfile } from './services/profileService'
 import { supabase } from './services/supabase'
+import { useRole } from './hooks/useRole'
 import type { Profile } from './types/profile'
 import type { Session } from '@supabase/supabase-js'
 
@@ -41,6 +43,9 @@ function App() {
 
   // PII: メモリのみ保持。localStorage/sessionStorage/URLには出力しない
   const [profile, setProfile] = useState<Profile>(emptyProfile)
+
+  // ロール取得（'admin' | 'employee' | null=読み込み中）
+  const role = useRole(session)
 
   // アプリ起動時にログイン状態を確認する
   useEffect(() => {
@@ -106,6 +111,45 @@ function App() {
     </div>
   )
 
+  // ロール取得中はローディング表示
+  if (!role) return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '16px', color: '#aaa' }}>
+      読み込み中...
+    </div>
+  )
+
+  // ===== 管理者画面 =====
+  if (role === 'admin') return (
+    <div className={`app ${isDark ? 'dark' : ''}`}>
+      <div className="container">
+
+        {/* ヘッダー */}
+        <div className="admin-header">
+          <p className="swell login-logo" style={{ margin: 0 }}>Swell</p>
+          <span className="admin-badge">管理者</span>
+          <div style={{ flex: 1 }} />
+
+          {/* カラーモード切り替え */}
+          <div className="mode-toggle">
+            <button className={`mode-btn ${colorMode === 'light' ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('light')}>☀️ ライト</button>
+            <button className={`mode-btn ${colorMode === 'auto'  ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('auto')} >🌓 自動</button>
+            <button className={`mode-btn ${colorMode === 'dark'  ? 'mode-btn-active' : ''}`} onClick={() => setColorMode('dark')} >🌙 ダーク</button>
+          </div>
+
+          {/* ログアウト */}
+          <button className="btn-logout" onClick={() => supabase.auth.signOut()}>
+            ログアウト
+          </button>
+        </div>
+
+        {/* 管理者コンテンツ */}
+        <AdminPage />
+
+      </div>
+    </div>
+  )
+
+  // ===== 従業員画面（従来の画面） =====
   return (
     <div className={`app ${isDark ? 'dark' : ''}`}>
       <div className="container">
