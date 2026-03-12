@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import JSZip from 'jszip'
 import type { KotsuRecord } from './types/transport'
 import { todayISO, formatDateShort, dateJPtoISO } from './utils/date'
 import { downloadCSV } from './utils/csv'
-import { loadFromStorage, saveToStorage, getKotsuKey } from './utils/storage'
+import { supabase } from './services/supabase'
 
 type Props = {
   viewYear: number
@@ -11,37 +11,35 @@ type Props = {
 }
 
 function KotsuPage({ viewYear, viewMonth }: Props) {
-  const storageKey = getKotsuKey(viewYear, viewMonth)
+  // 交通費レコード一覧
+  const [records, setRecords] = useState<KotsuRecord[]>([])
 
-  // 月ごとの交通費データ
-  const [records, setRecords] = useState<KotsuRecord[]>(() =>
-    loadFromStorage<KotsuRecord[]>(storageKey, [])
-  )
+  // データ読み込み中フラグ
+  const [loading, setLoading] = useState(true)
 
   // フォーム入力値
-  const [dateISO, setDateISO] = useState(todayISO)
-  const [fromInput, setFromInput] = useState('')
-  const [toInput, setToInput] = useState('')
-  const [amountInput, setAmountInput] = useState('')
+  const [dateISO,      setDateISO]      = useState(todayISO)
+  const [fromInput,    setFromInput]    = useState('')
+  const [toInput,      setToInput]      = useState('')
+  const [amountInput,  setAmountInput]  = useState('')
 
   // テーブルの編集・削除状態
   const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null)
-  const [editDateIndex, setEditDateIndex] = useState<number | null>(null)
-  const [editDateValue, setEditDateValue] = useState('')
+  const [editDateIndex,      setEditDateIndex]      = useState<number | null>(null)
+  const [editDateValue,      setEditDateValue]      = useState('')
 
   // 領収書画像（フォーム入力中のもの）
   const [receiptDataUrl, setReceiptDataUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 領収書に記載された購入日・購入金額
-  // useState('') → 最初は空欄。入力するたびに値が更新される
   const [receiptDate,   setReceiptDate]   = useState('')
   const [receiptAmount, setReceiptAmount] = useState('')
 
-  // 領収書の拡大表示（url: 画像データ、filename: 保存時のファイル名）
+  // 領収書の拡大表示
   const [viewReceipt, setViewReceipt] = useState<{ url: string; filename: string } | null>(null)
 
-  // data URLから拡張子を取り出す（例: "data:image/jpeg;base64,..." → "jpg"）
+  // data URL から拡張子を取り出す
   const getExtension = (dataUrl: string): string => {
     const type = dataUrl.match(/data:image\/(\w+);base64/)?.[1] ?? 'png'
     return type === 'jpeg' ? 'jpg' : type
@@ -55,40 +53,102 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
     a.click()
   }
 
-  // recordsが変わるたびに保存
+  // Supabase からその月のデータを取得する
+  const fetchRecords = useCallback(async () => {
+    setLoading(true)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+
+    // 表示月に一致する日付だけ取得（例: "2026/3/" で始まるもの）
+    const prefix = `${viewYear}/${viewMonth}/`
+
+    const { data, error } = await supabase
+      .from('transport')
+      .select('*')
+      .eq('user_id', user.id)
+      .like('date', `${prefix}%`)
+      .order('created_at')
+
+    if (error) {
+      console.error('交通費データの取得に失敗しました', error)
+    } else {
+      // DB のスネークケース → KotsuRecord のキャメルケースに変換
+      setRecords((data ?? []).map(row => ({
+        id:            row.id,
+        date:          row.date,
+        from:          row.from_station ?? '',
+        to:            row.to_station   ?? '',
+        amount:        row.amount       ?? '',
+        receiptImage:  row.receipt_image  ?? undefined,
+        receiptDate:   row.receipt_date   ?? undefined,
+        receiptAmount: row.receipt_amount ?? undefined,
+      })))
+    }
+
+    setLoading(false)
+  }, [viewYear, viewMonth])
+
+  // 月が切り替わるたびにデータを取得
   useEffect(() => {
-    saveToStorage(storageKey, records)
-  }, [records, storageKey])
+    fetchRecords()
+  }, [fetchRecords])
 
   // 画像ファイルを選択したときの処理
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    // FileReaderでbase64のdata URLに変換して保存できる形にする
     const reader = new FileReader()
     reader.onload = () => setReceiptDataUrl(reader.result as string)
     reader.readAsDataURL(file)
   }
 
-  // フォームの入力内容をレコードに追加する
-  const handleAdd = () => {
+  // フォームの入力内容を Supabase に追加する
+  const handleAdd = async () => {
     if (!fromInput || !toInput || !amountInput) {
       alert('出発駅・到着駅・費用をすべて入力してください')
       return
     }
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const newDate = formatDateShort(new Date(dateISO))
+
+    // DB に挿入する
+    const { data, error } = await supabase
+      .from('transport')
+      .insert({
+        user_id:        user.id,
+        date:           newDate,
+        from_station:   fromInput,
+        to_station:     toInput,
+        amount:         amountInput,
+        receipt_image:  receiptDataUrl  ?? null,
+        receipt_date:   receiptDate     || null,
+        receipt_amount: receiptAmount   || null,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      alert('追加に失敗しました: ' + error.message)
+      return
+    }
+
+    // 画面の一覧にも追加する
     setRecords([...records, {
-      date: formatDateShort(new Date(dateISO)),
-      from: fromInput,
-      to: toInput,
-      amount: amountInput,
+      id:            data.id,
+      date:          newDate,
+      from:          fromInput,
+      to:            toInput,
+      amount:        amountInput,
       receiptImage:  receiptDataUrl   ?? undefined,
-      // 入力があれば保存、空欄なら undefined（保存しない）
-      // || undefined → 空文字('')はfalseなのでundefinedになる
-      receiptDate:   receiptDate   || undefined,
-      receiptAmount: receiptAmount || undefined,
+      receiptDate:   receiptDate      || undefined,
+      receiptAmount: receiptAmount    || undefined,
     }])
 
-    // フォームをリセット（すべての入力欄を空に戻す）
+    // フォームをリセット
     setFromInput('')
     setToInput('')
     setAmountInput('')
@@ -98,20 +158,46 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  // 日付の編集を開始する
   const handleDateClick = (index: number, currentDate: string) => {
     setEditDateIndex(index)
     setEditDateValue(dateJPtoISO(currentDate))
   }
 
-  const handleDateSave = (index: number) => {
+  // 日付の編集を確定する
+  const handleDateSave = async (index: number) => {
     if (!editDateValue) { setEditDateIndex(null); return }
+
     const newDate = formatDateShort(new Date(editDateValue))
-    setRecords(records.map((r, i) => i === index ? { ...r, date: newDate } : r))
+    const record  = records[index]
+
+    const { error } = await supabase
+      .from('transport')
+      .update({ date: newDate })
+      .eq('id', record.id)
+
+    if (error) {
+      alert('日付の更新に失敗しました: ' + error.message)
+    } else {
+      setRecords(records.map((r, i) => i === index ? { ...r, date: newDate } : r))
+    }
     setEditDateIndex(null)
   }
 
-  const handleDelete = (index: number) => {
-    setRecords(records.filter((_, i) => i !== index))
+  // 行を削除する
+  const handleDelete = async (index: number) => {
+    const record = records[index]
+
+    const { error } = await supabase
+      .from('transport')
+      .delete()
+      .eq('id', record.id)
+
+    if (error) {
+      alert('削除に失敗しました: ' + error.message)
+    } else {
+      setRecords(records.filter((_, i) => i !== index))
+    }
     setDeleteConfirmIndex(null)
   }
 
@@ -122,19 +208,18 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
     const header = ['日付', '出発駅', '到着駅', '費用（円）', '領収書購入日', '領収書金額（円）']
     const rows = records.map(r => [
       r.date, r.from, r.to, r.amount,
-      r.receiptDate ?? '',    // 未入力なら空欄
-      r.receiptAmount ?? '',  // 未入力なら空欄
+      r.receiptDate ?? '',
+      r.receiptAmount ?? '',
     ])
     const footer = ['', '', '合計', String(total), '', '']
     downloadCSV([header, ...rows, footer], `交通費_${monthLabel}.csv`)
   }
 
-  // CSVと領収書画像をまとめてZIPでダウンロードする
+  // CSV と領収書画像をまとめて ZIP でダウンロードする
   const handleDownloadZip = async () => {
     const monthLabel = `${viewYear}年${viewMonth}月`
     const zip = new JSZip()
 
-    // ZIPの中にCSVを追加（BOM付きでExcel対応）
     const header = ['日付', '出発駅', '到着駅', '費用（円）', '領収書購入日', '領収書金額（円）', '領収書画像']
     const rows = records.map(r => [
       r.date, r.from, r.to, r.amount,
@@ -147,32 +232,25 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
       .join('\n')
     zip.file(`交通費_${monthLabel}.csv`, csvContent)
 
-    // ZIPの中に領収書画像フォルダを追加
     const folder = zip.folder('領収書')
     records.forEach(r => {
       if (!r.receiptImage) return
-
-      // data URLを「ヘッダー部分」と「base64データ」に分割
-      const [header, base64] = r.receiptImage.split(',')
-      const mimeType = header.match(/data:(.*);base64/)?.[1] ?? 'image/png'
+      const [head, base64] = r.receiptImage.split(',')
+      const mimeType = head.match(/data:(.*);base64/)?.[1] ?? 'image/png'
       const ext = mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1]
-
-      // ファイル名の「/」を「-」に置換してフォルダ構造の崩れを防ぐ
       const filename = `領収書_${r.date}_${r.from}_${r.to}.${ext}`.replace(/\//g, '-')
       folder?.file(filename, base64, { base64: true })
     })
 
-    // ZIPを生成してダウンロード
     const blob = await zip.generateAsync({ type: 'blob' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = `交通費_${monthLabel}.zip`
     a.click()
-    URL.revokeObjectURL(url)  // メモリ解放
+    URL.revokeObjectURL(url)
   }
 
-  // 領収書付きのレコードが1件以上あるか
   const hasReceipts = records.some(r => r.receiptImage)
 
   return (
@@ -186,7 +264,6 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
         <div className="form-row">
           <label>領収書</label>
           <div className="receipt-upload-area">
-            {/* 実際のfile inputは非表示にして、labelをボタンとして使う */}
             <input
               ref={fileInputRef}
               type="file"
@@ -198,8 +275,6 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
             <label htmlFor="receiptFile" className="receipt-file-label">
               📎 画像を選択
             </label>
-
-            {/* 選択した画像のサムネイル（クリックで拡大） */}
             {receiptDataUrl && (
               <>
                 <img
@@ -227,15 +302,10 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
           </div>
         </div>
 
-        {/* 領収書の購入日・購入金額（画像と一緒に管理する情報） */}
+        {/* 領収書の購入日・購入金額 */}
         <div className="receipt-meta-area">
           <div className="form-row">
             <label>購入日</label>
-            {/*
-              type="date" → カレンダーで日付を選択できる入力欄
-              value={receiptDate} → Reactが値を管理（制御コンポーネント）
-              onChange → 入力が変わるたびに setReceiptDate で状態を更新
-            */}
             <input
               type="date"
               className="form-input"
@@ -245,9 +315,6 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
           </div>
           <div className="form-row">
             <label>購入金額（円）</label>
-            {/*
-              type="number" → 数字のみ入力できる欄（文字は入力不可）
-            */}
             <input
               type="number"
               className="form-input"
@@ -285,7 +352,6 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
       <div className="table-header">
         <h2>申請一覧</h2>
         <div className="download-buttons">
-          {/* 領収書がある場合のみZIPボタンを表示 */}
           {hasReceipts && (
             <button className="btn-download btn-download-zip" onClick={handleDownloadZip}>
               📦 ZIP（CSV＋画像）
@@ -298,92 +364,92 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
       </div>
 
       <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>日付</th><th>出発駅</th><th>到着駅</th><th>費用（円）</th><th>領収書</th><th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.length === 0 ? (
-              <tr><td colSpan={6} className="no-record">データがありません</td></tr>
-            ) : (
-              records.map((r, i) => (
-                <tr key={i}>
-                  <td>
-                    {editDateIndex === i ? (
-                      <span className="date-edit">
-                        <input type="date" className="date-edit-input"
-                          value={editDateValue} onChange={e => setEditDateValue(e.target.value)} />
-                        <button className="btn-delete-yes" onClick={() => handleDateSave(i)}>確定</button>
-                        <button className="btn-delete-no" onClick={() => setEditDateIndex(null)}>取消</button>
-                      </span>
-                    ) : (
-                      <span className="editable-cell" onClick={() => handleDateClick(i, r.date)} title="クリックで編集">
-                        {r.date} ✏️
-                      </span>
-                    )}
-                  </td>
-                  <td>{r.from}</td>
-                  <td>{r.to}</td>
-                  <td>¥{Number(r.amount).toLocaleString()}</td>
-                  <td>
-                    {/*
-                      領収書セル：画像アイコン＋購入日・金額をまとめて表示
-                      r.receiptImage が存在する場合だけ📎を表示
-                      r.receiptDate / r.receiptAmount は入力があれば表示
-                    */}
-                    <div className="receipt-cell">
-                      {r.receiptImage ? (
-                        <button
-                          className="btn-receipt-view"
-                          onClick={() => setViewReceipt({
-                            url: r.receiptImage!,
-                            filename: `領収書_${r.date}_${r.from}_${r.to}.${getExtension(r.receiptImage!)}`,
-                          })}
-                          title="領収書を表示"
-                        >
-                          📎
-                        </button>
-                      ) : (
-                        <span className="text-muted">—</span>
-                      )}
-                      {/* 購入日・購入金額が入力されていれば小さく表示 */}
-                      {(r.receiptDate || r.receiptAmount) && (
-                        <div className="receipt-meta">
-                          {r.receiptDate   && <span>{r.receiptDate}</span>}
-                          {r.receiptAmount && <span>¥{Number(r.receiptAmount).toLocaleString()}</span>}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    {deleteConfirmIndex === i ? (
-                      <span className="delete-confirm">
-                        <button className="btn-delete-yes" onClick={() => handleDelete(i)}>はい</button>
-                        <button className="btn-delete-no" onClick={() => setDeleteConfirmIndex(null)}>キャンセル</button>
-                      </span>
-                    ) : (
-                      <button className="btn-delete" onClick={() => setDeleteConfirmIndex(i)}>削除</button>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-          {records.length > 0 && (
-            <tfoot>
-              <tr className="total-row">
-                <td colSpan={3}>合計</td>
-                <td>¥{total.toLocaleString()}</td>
-                <td colSpan={2}></td>
+        {loading ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+            読み込み中...
+          </p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>日付</th><th>出発駅</th><th>到着駅</th><th>費用（円）</th><th>領収書</th><th></th>
               </tr>
-            </tfoot>
-          )}
-        </table>
+            </thead>
+            <tbody>
+              {records.length === 0 ? (
+                <tr><td colSpan={6} className="no-record">データがありません</td></tr>
+              ) : (
+                records.map((r, i) => (
+                  <tr key={r.id ?? i}>
+                    <td>
+                      {editDateIndex === i ? (
+                        <span className="date-edit">
+                          <input type="date" className="date-edit-input"
+                            value={editDateValue} onChange={e => setEditDateValue(e.target.value)} />
+                          <button className="btn-delete-yes" onClick={() => handleDateSave(i)}>確定</button>
+                          <button className="btn-delete-no" onClick={() => setEditDateIndex(null)}>取消</button>
+                        </span>
+                      ) : (
+                        <span className="editable-cell" onClick={() => handleDateClick(i, r.date)} title="クリックで編集">
+                          {r.date} ✏️
+                        </span>
+                      )}
+                    </td>
+                    <td>{r.from}</td>
+                    <td>{r.to}</td>
+                    <td>¥{Number(r.amount).toLocaleString()}</td>
+                    <td>
+                      <div className="receipt-cell">
+                        {r.receiptImage ? (
+                          <button
+                            className="btn-receipt-view"
+                            onClick={() => setViewReceipt({
+                              url: r.receiptImage!,
+                              filename: `領収書_${r.date}_${r.from}_${r.to}.${getExtension(r.receiptImage!)}`,
+                            })}
+                            title="領収書を表示"
+                          >
+                            📎
+                          </button>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                        {(r.receiptDate || r.receiptAmount) && (
+                          <div className="receipt-meta">
+                            {r.receiptDate   && <span>{r.receiptDate}</span>}
+                            {r.receiptAmount && <span>¥{Number(r.receiptAmount).toLocaleString()}</span>}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      {deleteConfirmIndex === i ? (
+                        <span className="delete-confirm">
+                          <button className="btn-delete-yes" onClick={() => handleDelete(i)}>はい</button>
+                          <button className="btn-delete-no" onClick={() => setDeleteConfirmIndex(null)}>キャンセル</button>
+                        </span>
+                      ) : (
+                        <button className="btn-delete" onClick={() => setDeleteConfirmIndex(i)}>削除</button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            {records.length > 0 && (
+              <tfoot>
+                <tr className="total-row">
+                  <td colSpan={3}>合計</td>
+                  <td>¥{total.toLocaleString()}</td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        )}
       </div>
 
-      {/* 領収書の拡大表示モーダル（背景クリックで閉じる） */}
+      {/* 領収書の拡大表示モーダル */}
       {viewReceipt && (
         <div className="receipt-modal" onClick={() => setViewReceipt(null)}>
           <div className="receipt-modal-inner" onClick={e => e.stopPropagation()}>

@@ -14,6 +14,24 @@ export const getNowH = () => String(new Date().getHours()).padStart(2, '0')
 export const getNowM = () =>
   String(Math.floor(new Date().getMinutes() / 5) * 5).padStart(2, '0')
 
+// 休憩時間を手動変更したときに実働時間を再計算する
+// 実働 = （退勤 - 出勤） - 手動入力の休憩時間
+export const calcWorkTimeFromBreak = (
+  clockIn: string,
+  clockOut: string,
+  breakTime: string
+): string => {
+  const toMin = (t: string) => {
+    const [h, m] = t.split(':').map(Number)
+    return h * 60 + m
+  }
+  const total = toMin(clockOut) - toMin(clockIn)
+  const brk   = toMin(breakTime)
+  const work  = total - brk
+  if (work <= 0) return '-'
+  return `${Math.floor(work / 60)}:${String(work % 60).padStart(2, '0')}`
+}
+
 // 出勤・退勤時刻から休憩時間と実働時間を計算する
 // ルール：在席時間が6時間超なら休憩1時間を差し引く
 export const calcTimes = (

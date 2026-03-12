@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { DayRecord } from './types/attendance'
 import type { Profile } from './types/profile'
-import { HOURS, MINUTES, toHHMM, getNowH, getNowM, calcTimes } from './utils/time'
+import { HOURS, MINUTES, toHHMM, getNowH, getNowM, calcTimes, calcWorkTimeFromBreak } from './utils/time'
 import { formatDateLong, formatDateShort, getWeekday, dateJPtoISO, getRowClass } from './utils/date'
 import { supabase } from './services/supabase'
 import CsvExport from './components/CsvExport'
@@ -26,8 +26,14 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
   const [clockOutH, setClockOutH] = useState(getNowH)
   const [clockOutM, setClockOutM] = useState(getNowM)
   const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null)
-  const [editDateIndex, setEditDateIndex] = useState<number | null>(null)
-  const [editDateValue, setEditDateValue] = useState('')
+  const [editDateIndex,  setEditDateIndex]  = useState<number | null>(null)
+  const [editDateValue,  setEditDateValue]  = useState('')
+  // 備考編集
+  const [editNoteIndex,  setEditNoteIndex]  = useState<number | null>(null)
+  const [editNoteValue,  setEditNoteValue]  = useState('')
+  // 休憩時間編集
+  const [editBreakIndex, setEditBreakIndex] = useState<number | null>(null)
+  const [editBreakValue, setEditBreakValue] = useState('')
 
   // 1秒ごとに時刻を更新
   useEffect(() => {
@@ -177,6 +183,54 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
     }
   }
 
+  // 備考を保存する
+  const handleNoteSave = async (index: number) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { error } = await supabase
+      .from('attendance')
+      .update({ note: editNoteValue })
+      .eq('user_id', user.id)
+      .eq('date', records[index].date)
+
+    if (error) {
+      alert('備考の保存に失敗しました: ' + error.message)
+    } else {
+      setRecords(records.map((r, i) => i === index ? { ...r, note: editNoteValue } : r))
+    }
+    setEditNoteIndex(null)
+  }
+
+  // 休憩時間を保存して実働時間を再計算する
+  const handleBreakSave = async (index: number) => {
+    if (!editBreakValue) { setEditBreakIndex(null); return }
+
+    const record   = records[index]
+    // 出勤・退勤が揃っている場合のみ実働を再計算する
+    const workTime = (record.clockIn !== '-' && record.clockOut !== '-')
+      ? calcWorkTimeFromBreak(record.clockIn, record.clockOut, editBreakValue)
+      : record.workTime
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { error } = await supabase
+      .from('attendance')
+      .update({ break_time: editBreakValue, work_time: workTime })
+      .eq('user_id', user.id)
+      .eq('date', record.date)
+
+    if (error) {
+      alert('休憩時間の保存に失敗しました: ' + error.message)
+    } else {
+      setRecords(records.map((r, i) =>
+        i === index ? { ...r, breakTime: editBreakValue, workTime } : r
+      ))
+    }
+    setEditBreakIndex(null)
+  }
+
   // 退勤打刻
   const handleClockOut = async () => {
     if (!isCurrentMonth) { alert('過去・未来の月には打刻できません'); return }
@@ -292,8 +346,65 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
                         </span>
                       )}
                     </td>
-                    <td>{r.weekday}</td><td>{r.clockIn}</td>
-                    <td>{r.clockOut}</td><td>{r.breakTime}</td><td>{r.workTime}</td><td>{r.note}</td>
+                    <td>{r.weekday}</td>
+                    <td>{r.clockIn}</td>
+                    <td>{r.clockOut}</td>
+
+                    {/* 休憩時間（クリックで編集） */}
+                    <td>
+                      {editBreakIndex === i ? (
+                        <span className="date-edit">
+                          <input
+                            type="text"
+                            className="date-edit-input"
+                            style={{ width: '70px' }}
+                            value={editBreakValue}
+                            placeholder="例: 1:00"
+                            onChange={e => setEditBreakValue(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleBreakSave(i)}
+                          />
+                          <button className="btn-delete-yes" onClick={() => handleBreakSave(i)}>確定</button>
+                          <button className="btn-delete-no" onClick={() => setEditBreakIndex(null)}>取消</button>
+                        </span>
+                      ) : (
+                        <span
+                          className="editable-cell"
+                          onClick={() => { setEditBreakIndex(i); setEditBreakValue(r.breakTime === '-' ? '' : r.breakTime) }}
+                          title="クリックで編集"
+                        >
+                          {r.breakTime} ✏️
+                        </span>
+                      )}
+                    </td>
+
+                    <td>{r.workTime}</td>
+
+                    {/* 備考（クリックで編集） */}
+                    <td>
+                      {editNoteIndex === i ? (
+                        <span className="date-edit">
+                          <input
+                            type="text"
+                            className="date-edit-input"
+                            style={{ width: '120px' }}
+                            value={editNoteValue}
+                            placeholder="備考を入力"
+                            onChange={e => setEditNoteValue(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleNoteSave(i)}
+                          />
+                          <button className="btn-delete-yes" onClick={() => handleNoteSave(i)}>確定</button>
+                          <button className="btn-delete-no" onClick={() => setEditNoteIndex(null)}>取消</button>
+                        </span>
+                      ) : (
+                        <span
+                          className="editable-cell"
+                          onClick={() => { setEditNoteIndex(i); setEditNoteValue(r.note) }}
+                          title="クリックで編集"
+                        >
+                          {r.note || '—'} ✏️
+                        </span>
+                      )}
+                    </td>
                     <td>
                       {deleteConfirmIndex === i ? (
                         <span className="delete-confirm">
