@@ -4,7 +4,7 @@
 
 Excelベースの勤怠管理をブラウザ・デスクトップアプリで置き換えるための勤怠管理ツールです。
 
-🔗 **[アプリを開く](https://kintai-app-henna.vercel.app)**
+🔗 **[アプリを開く](https://kintai-app-swell.vercel.app)**
 
 ## 主な機能
 

@@ -4,7 +4,7 @@
 
 A browser and desktop app to replace Excel-based attendance tracking.
 
-🔗 **[Open App](https://kintai-app-henna.vercel.app)**
+🔗 **[Open App](https://kintai-app-swell.vercel.app)**
 
 ## Features
 
