@@ -23,6 +23,7 @@ type UserRow = {
 type AttendanceRow = {
   date: string
   weekday: string
+  workType: string
   clockIn: string
   clockOut: string
   breakTime: string
@@ -84,6 +85,7 @@ function AdminAttendance() {
       setRecords((data ?? []).map(row => ({
         date:      row.date,
         weekday:   row.weekday    ?? '',
+        workType:  row.work_type  ?? '',
         clockIn:   row.clock_in   ?? '-',
         clockOut:  row.clock_out  ?? '-',
         breakTime: row.break_time ?? '-',
@@ -118,11 +120,11 @@ function AdminAttendance() {
 
   // 選択中の社員1人分をCSVダウンロード
   const handleDownloadCSV = () => {
-    const header = ['日付', '曜日', '出勤', '退勤', '休憩', '実働', '備考']
+    const header = ['日付', '曜日', '勤務区分', '出勤', '退勤', '休憩', '実働', '備考']
     const rows   = records.map(r =>
-      [r.date, r.weekday, r.clockIn, r.clockOut, r.breakTime, r.workTime, r.note]
+      [r.date, r.weekday, r.workType, r.clockIn, r.clockOut, r.breakTime, r.workTime, r.note]
     )
-    const footer = [`勤務日数: ${workingDays}日`, '', '', '', '', '', '']
+    const footer = [`勤務日数: ${workingDays}日`, '', '', '', '', '', '', '']
     downloadCSV(
       [header, ...rows, footer],
       `勤怠_${displayName}_${viewYear}年${viewMonth}月.csv`
@@ -146,11 +148,12 @@ function AdminAttendance() {
     const nameMap: Record<string, string> = {}
     users.forEach(u => { nameMap[u.id] = u.name || u.email })
 
-    const header = ['社員名', '日付', '曜日', '出勤', '退勤', '休憩', '実働', '備考']
+    const header = ['社員名', '日付', '曜日', '勤務区分', '出勤', '退勤', '休憩', '実働', '備考']
     const rows = data.map(row => [
       nameMap[row.user_id] ?? row.user_id,
       row.date,
       row.weekday    ?? '',
+      row.work_type  ?? '',
       row.clock_in   ?? '-',
       row.clock_out  ?? '-',
       row.break_time ?? '-',
@@ -231,13 +234,13 @@ function AdminAttendance() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>日付</th><th>曜日</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>備考</th>
+                  <th>日付</th><th>曜日</th><th>勤務区分</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>備考</th>
                 </tr>
               </thead>
               <tbody>
                 {records.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+                    <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
                       データがありません
                     </td>
                   </tr>
@@ -245,6 +248,7 @@ function AdminAttendance() {
                   <tr key={i} className={getRowClass(r.date, r.weekday)}>
                     <td>{r.date}</td>
                     <td>{r.weekday}</td>
+                    <td>{r.workType || '—'}</td>
                     <td>{r.clockIn}</td>
                     <td>{r.clockOut}</td>
                     <td>{r.breakTime}</td>

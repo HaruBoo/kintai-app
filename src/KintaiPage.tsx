@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { DayRecord } from './types/attendance'
+import { WORK_TYPES } from './types/attendance'
 import type { Profile } from './types/profile'
 import { HOURS, MINUTES, toHHMM, getNowH, getNowM, calcTimes, calcWorkTimeFromBreak } from './utils/time'
 import { formatDateLong, formatDateShort, getWeekday, dateJPtoISO, getRowClass } from './utils/date'
@@ -65,12 +66,13 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
       // DB のスネークケース → DayRecord のキャメルケースに変換
       setRecords((data ?? []).map(row => ({
         date:      row.date,
-        weekday:   row.weekday   ?? '',
-        clockIn:   row.clock_in  ?? '-',
-        clockOut:  row.clock_out ?? '-',
+        weekday:   row.weekday    ?? '',
+        clockIn:   row.clock_in   ?? '-',
+        clockOut:  row.clock_out  ?? '-',
         breakTime: row.break_time ?? '-',
         workTime:  row.work_time  ?? '-',
-        note:      row.note      ?? '',
+        note:      row.note       ?? '',
+        workType:  row.work_type  ?? '',
       })))
     }
 
@@ -159,7 +161,7 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
     const newRecord: DayRecord = {
       date: todayKey, weekday: todayWeekday,
       clockIn: toHHMM(clockInH, clockInM),
-      clockOut: '-', breakTime: '-', workTime: '-', note: '',
+      clockOut: '-', breakTime: '-', workTime: '-', note: '', workType: '',
     }
 
     // DB に挿入する
@@ -229,6 +231,22 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
       ))
     }
     setEditBreakIndex(null)
+  }
+
+  // 勤務区分を保存する
+  const handleWorkTypeSave = async (index: number, workType: string) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { error } = await supabase
+      .from('attendance')
+      .update({ work_type: workType || null })
+      .eq('user_id', user.id)
+      .eq('date', records[index].date)
+
+    if (!error) {
+      setRecords(records.map((r, i) => i === index ? { ...r, workType: workType as DayRecord['workType'] } : r))
+    }
   }
 
   // 退勤打刻
@@ -315,7 +333,7 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
           <span className="working-days">勤務日数：{workingDays}日</span>
           <CsvExport
             buildRows={() => records.map(r =>
-              [r.date, r.weekday, r.clockIn, r.clockOut, r.breakTime, r.workTime, r.note]
+              [r.date, r.weekday, r.workType, r.clockIn, r.clockOut, r.breakTime, r.workTime, r.note]
             )}
             filename={`勤怠_${viewYear}年${viewMonth}月.csv`}
             profile={profile}
@@ -333,17 +351,18 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
           <table>
             <thead>
               <tr>
-                <th>日付</th><th>曜日</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>備考</th><th></th>
+                <th>日付</th><th>曜日</th><th>勤務区分</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>備考</th><th></th>
               </tr>
             </thead>
             <tbody>
               {records.length === 0 ? (
-                <tr><td colSpan={8} className="no-record">データがありません</td></tr>
+                <tr><td colSpan={9} className="no-record">データがありません</td></tr>
               ) : (
                 records.map((r, i) => (
                   <tr key={i} className={getRowClass(r.date, r.weekday)}>
                     <td>
                       {editDateIndex === i ? (
+
                         <span className="date-edit">
                           <input type="date" className="date-edit-input"
                             value={editDateValue} onChange={e => setEditDateValue(e.target.value)} />
@@ -357,6 +376,21 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
                       )}
                     </td>
                     <td>{r.weekday}</td>
+
+                    {/* 勤務区分（プルダウンで即時保存） */}
+                    <td>
+                      <select
+                        className="work-type-select"
+                        value={r.workType}
+                        onChange={e => handleWorkTypeSave(i, e.target.value)}
+                      >
+                        <option value="">—</option>
+                        {WORK_TYPES.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </td>
+
                     <td>{r.clockIn}</td>
                     <td>{r.clockOut}</td>
 

@@ -1307,6 +1307,18 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   .admin-send-btn    { width: 100%; }
 }
 
+/* ===== 勤務区分プルダウン ===== */
+.work-type-select {
+  padding: 3px 6px;
+  font-size: 0.82rem;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-container);
+  color: var(--text-heading);
+  cursor: pointer;
+  min-width: 72px;
+}
+
 /* ===== プロフィール表示（上部） ===== */
 .profile-display {
   display: flex;
