@@ -11,6 +11,10 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl  = import.meta.env.VITE_SUPABASE_URL
 const supabaseKey  = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+// createClient を呼ぶ前にハッシュを確認する
+// （createClient が URL ハッシュを読み取って消してしまうため、先に確認が必要）
+export const isInviteFlow = window.location.hash.includes('type=invite')
+
 // Supabase クライアントを作成してエクスポート
 // このオブジェクトを使ってログイン・データ取得などを行う
 export const supabase = createClient(supabaseUrl, supabaseKey)

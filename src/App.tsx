@@ -7,13 +7,11 @@ import AdminPage from './AdminPage'
 import SetPasswordPage from './SetPasswordPage'
 import ProfileSection from './components/ProfileSection'
 import { emptyProfile } from './services/profileService'
-import { supabase } from './services/supabase'
+import { supabase, isInviteFlow } from './services/supabase'
 import { useRole } from './hooks/useRole'
 import type { Profile } from './types/profile'
 import type { Session } from '@supabase/supabase-js'
 
-// 招待リンクから来たユーザーかどうかを、Supabase がハッシュを消す前に確認する
-const isInviteFlow = window.location.hash.includes('type=invite')
 
 type ColorMode = 'auto' | 'light' | 'dark'
 
