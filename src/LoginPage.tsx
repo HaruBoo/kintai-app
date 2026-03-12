@@ -67,15 +67,8 @@ function LoginPage() {
       return
     }
 
-    if (tab === 'employee' && actualRole !== 'employee') {
-      // 「一般」タブでログインしたが、実際は管理者
-      await supabase.auth.signOut()
-      setError('管理者アカウントです。「管理者」タブからログインしてください')
-      setLoading(false)
-      return
-    }
-
-    // ④ ロールが一致 → App.tsx 側が自動で画面を切り替える
+    // ④ ログイン時に選んだタブを記憶する（App.tsx で画面切り替えに使う）
+    sessionStorage.setItem('loginTab', tab)
     setLoading(false)
   }
 
@@ -113,7 +106,7 @@ function LoginPage() {
           <input
             type="email"
             className="login-input"
-            placeholder="例：haru@example.com"
+            placeholder="例：username@example.inc"
             value={email}
             onChange={e => setEmail(e.target.value)}
             autoComplete="email"

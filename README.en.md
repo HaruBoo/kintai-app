@@ -35,7 +35,14 @@ A browser and desktop app to replace Excel-based attendance tracking.
 
 Select "Employee" or "Admin" from the tab on the login screen, then enter your email and password.
 
-- Login is rejected if the selected tab does not match your actual role.
+| Tab Selected | Account Type | Screen Shown |
+|---|---|---|
+| Employee | Employee | Employee screen |
+| Employee | Admin | Employee screen (admins can use the employee screen) |
+| Admin | Admin | Admin screen |
+| Admin | Employee | ❌ Login rejected |
+
+> Admin accounts can also log in from the "Employee" tab. In that case, the employee screen is shown.
 
 ### 2. Clock In / Clock Out
 

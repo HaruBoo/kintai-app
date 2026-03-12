@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { DayRecord } from './types/attendance'
 import type { Profile } from './types/profile'
 import { HOURS, MINUTES, toHHMM, getNowH, getNowM, calcTimes } from './utils/time'
 import { formatDateLong, formatDateShort, getWeekday, dateJPtoISO, getRowClass } from './utils/date'
-import { loadFromStorage, saveToStorage, getKintaiKey } from './utils/storage'
+import { supabase } from './services/supabase'
 import CsvExport from './components/CsvExport'
 
 type Props = {
@@ -15,16 +15,14 @@ type Props = {
 function KintaiPage({ viewYear, viewMonth, profile }: Props) {
   const [currentTime, setCurrentTime] = useState(new Date())
 
-  // 表示月のストレージキー
-  const storageKey = getKintaiKey(viewYear, viewMonth)
+  // 勤怠レコード一覧
+  const [records, setRecords] = useState<DayRecord[]>([])
 
-  // 月が切り替わるたびにその月のデータを読み込む
-  const [records, setRecords] = useState<DayRecord[]>(() =>
-    loadFromStorage<DayRecord[]>(storageKey, [])
-  )
+  // データ読み込み中フラグ
+  const [loading, setLoading] = useState(true)
 
-  const [clockInH, setClockInH] = useState(getNowH)
-  const [clockInM, setClockInM] = useState(getNowM)
+  const [clockInH,  setClockInH]  = useState(getNowH)
+  const [clockInM,  setClockInM]  = useState(getNowM)
   const [clockOutH, setClockOutH] = useState(getNowH)
   const [clockOutM, setClockOutM] = useState(getNowM)
   const [deleteConfirmIndex, setDeleteConfirmIndex] = useState<number | null>(null)
@@ -37,10 +35,46 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
     return () => clearInterval(timer)
   }, [])
 
-  // records が変わるたびにその月のキーで保存
+  // Supabase からその月のデータを取得する
+  const fetchRecords = useCallback(async () => {
+    setLoading(true)
+
+    // ログイン中ユーザーの ID を取得
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+
+    // 表示月に一致する日付だけ取得（例: "2026/3/" で始まるもの）
+    const prefix = `${viewYear}/${viewMonth}/`
+
+    const { data, error } = await supabase
+      .from('attendance')
+      .select('*')
+      .eq('user_id', user.id)
+      .like('date', `${prefix}%`)
+      .order('date')
+
+    if (error) {
+      console.error('勤怠データの取得に失敗しました', error)
+    } else {
+      // DB のスネークケース → DayRecord のキャメルケースに変換
+      setRecords((data ?? []).map(row => ({
+        date:      row.date,
+        weekday:   row.weekday   ?? '',
+        clockIn:   row.clock_in  ?? '-',
+        clockOut:  row.clock_out ?? '-',
+        breakTime: row.break_time ?? '-',
+        workTime:  row.work_time  ?? '-',
+        note:      row.note      ?? '',
+      })))
+    }
+
+    setLoading(false)
+  }, [viewYear, viewMonth])
+
+  // 月が切り替わるたびにデータを取得
   useEffect(() => {
-    saveToStorage(storageKey, records)
-  }, [records, storageKey])
+    fetchRecords()
+  }, [fetchRecords])
 
   const dateStr      = formatDateLong(currentTime)
   const todayKey     = formatDateShort(currentTime)
@@ -53,46 +87,123 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
   // 勤務日数（出勤打刻がある日だけカウント）
   const workingDays = records.filter(r => r.clockIn !== '-').length
 
+  // 日付をクリックして編集モードにする
   const handleDateClick = (index: number, currentDate: string) => {
     setEditDateIndex(index)
     setEditDateValue(dateJPtoISO(currentDate))
   }
 
-  const handleDateSave = (index: number) => {
+  // 日付の編集を確定する
+  const handleDateSave = async (index: number) => {
     if (!editDateValue) { setEditDateIndex(null); return }
-    const d = new Date(editDateValue)
-    setRecords(records.map((r, i) =>
-      i === index ? { ...r, date: formatDateShort(d), weekday: getWeekday(d) } : r
-    ))
+
+    const d       = new Date(editDateValue)
+    const newDate = formatDateShort(d)
+    const newWeek = getWeekday(d)
+    const oldDate = records[index].date
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    // DB の date を更新する
+    const { error } = await supabase
+      .from('attendance')
+      .update({ date: newDate, weekday: newWeek })
+      .eq('user_id', user.id)
+      .eq('date', oldDate)
+
+    if (error) {
+      alert('日付の更新に失敗しました: ' + error.message)
+    } else {
+      setRecords(records.map((r, i) =>
+        i === index ? { ...r, date: newDate, weekday: newWeek } : r
+      ))
+    }
     setEditDateIndex(null)
   }
 
-  const handleDelete = (index: number) => {
-    setRecords(records.filter((_, i) => i !== index))
+  // 行を削除する
+  const handleDelete = async (index: number) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { error } = await supabase
+      .from('attendance')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('date', records[index].date)
+
+    if (error) {
+      alert('削除に失敗しました: ' + error.message)
+    } else {
+      setRecords(records.filter((_, i) => i !== index))
+    }
     setDeleteConfirmIndex(null)
   }
 
-  const handleClockIn = () => {
+  // 出勤打刻
+  const handleClockIn = async () => {
     if (!isCurrentMonth) { alert('過去・未来の月には打刻できません'); return }
     const exists = records.find(r => r.date === todayKey)
     if (exists) { alert('本日はすでに出勤打刻済みです'); return }
-    setRecords([...records, {
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const newRecord: DayRecord = {
       date: todayKey, weekday: todayWeekday,
       clockIn: toHHMM(clockInH, clockInM),
       clockOut: '-', breakTime: '-', workTime: '-', note: '',
-    }])
+    }
+
+    // DB に挿入する
+    const { error } = await supabase
+      .from('attendance')
+      .insert({
+        user_id:  user.id,
+        date:     newRecord.date,
+        weekday:  newRecord.weekday,
+        clock_in: newRecord.clockIn,
+        clock_out: '-',
+        break_time: '-',
+        work_time: '-',
+        note: '',
+      })
+
+    if (error) {
+      alert('出勤打刻に失敗しました: ' + error.message)
+    } else {
+      setRecords([...records, newRecord])
+    }
   }
 
-  const handleClockOut = () => {
+  // 退勤打刻
+  const handleClockOut = async () => {
     if (!isCurrentMonth) { alert('過去・未来の月には打刻できません'); return }
     const todayRecord = records.find(r => r.date === todayKey)
     if (!todayRecord) { alert('出勤打刻がまだです'); return }
     if (todayRecord.clockOut !== '-') { alert('本日はすでに退勤打刻済みです'); return }
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
     const clockOut = toHHMM(clockOutH, clockOutM)
     const { breakTime, workTime } = calcTimes(todayRecord.clockIn, clockOut)
-    setRecords(records.map(r =>
-      r.date === todayKey ? { ...r, clockOut, breakTime, workTime } : r
-    ))
+
+    // DB を更新する
+    const { error } = await supabase
+      .from('attendance')
+      .update({ clock_out: clockOut, break_time: breakTime, work_time: workTime })
+      .eq('user_id', user.id)
+      .eq('date', todayKey)
+
+    if (error) {
+      alert('退勤打刻に失敗しました: ' + error.message)
+    } else {
+      setRecords(records.map(r =>
+        r.date === todayKey ? { ...r, clockOut, breakTime, workTime } : r
+      ))
+    }
   }
 
   return (
@@ -148,50 +259,57 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
           />
         </div>
       </div>
+
       <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>日付</th><th>曜日</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>備考</th><th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.length === 0 ? (
-              <tr><td colSpan={8} className="no-record">データがありません</td></tr>
-            ) : (
-              records.map((r, i) => (
-                <tr key={i} className={getRowClass(r.date, r.weekday)}>
-                  <td>
-                    {editDateIndex === i ? (
-                      <span className="date-edit">
-                        <input type="date" className="date-edit-input"
-                          value={editDateValue} onChange={e => setEditDateValue(e.target.value)} />
-                        <button className="btn-delete-yes" onClick={() => handleDateSave(i)}>確定</button>
-                        <button className="btn-delete-no" onClick={() => setEditDateIndex(null)}>取消</button>
-                      </span>
-                    ) : (
-                      <span className="editable-cell" onClick={() => handleDateClick(i, r.date)} title="クリックで編集">
-                        {r.date} ✏️
-                      </span>
-                    )}
-                  </td>
-                  <td>{r.weekday}</td><td>{r.clockIn}</td>
-                  <td>{r.clockOut}</td><td>{r.breakTime}</td><td>{r.workTime}</td><td>{r.note}</td>
-                  <td>
-                    {deleteConfirmIndex === i ? (
-                      <span className="delete-confirm">
-                        <button className="btn-delete-yes" onClick={() => handleDelete(i)}>はい</button>
-                        <button className="btn-delete-no" onClick={() => setDeleteConfirmIndex(null)}>キャンセル</button>
-                      </span>
-                    ) : (
-                      <button className="btn-delete" onClick={() => setDeleteConfirmIndex(i)}>削除</button>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        {loading ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+            読み込み中...
+          </p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>日付</th><th>曜日</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>備考</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.length === 0 ? (
+                <tr><td colSpan={8} className="no-record">データがありません</td></tr>
+              ) : (
+                records.map((r, i) => (
+                  <tr key={i} className={getRowClass(r.date, r.weekday)}>
+                    <td>
+                      {editDateIndex === i ? (
+                        <span className="date-edit">
+                          <input type="date" className="date-edit-input"
+                            value={editDateValue} onChange={e => setEditDateValue(e.target.value)} />
+                          <button className="btn-delete-yes" onClick={() => handleDateSave(i)}>確定</button>
+                          <button className="btn-delete-no" onClick={() => setEditDateIndex(null)}>取消</button>
+                        </span>
+                      ) : (
+                        <span className="editable-cell" onClick={() => handleDateClick(i, r.date)} title="クリックで編集">
+                          {r.date} ✏️
+                        </span>
+                      )}
+                    </td>
+                    <td>{r.weekday}</td><td>{r.clockIn}</td>
+                    <td>{r.clockOut}</td><td>{r.breakTime}</td><td>{r.workTime}</td><td>{r.note}</td>
+                    <td>
+                      {deleteConfirmIndex === i ? (
+                        <span className="delete-confirm">
+                          <button className="btn-delete-yes" onClick={() => handleDelete(i)}>はい</button>
+                          <button className="btn-delete-no" onClick={() => setDeleteConfirmIndex(null)}>キャンセル</button>
+                        </span>
+                      ) : (
+                        <button className="btn-delete" onClick={() => setDeleteConfirmIndex(i)}>削除</button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )

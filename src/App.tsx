@@ -118,8 +118,12 @@ function App() {
     </div>
   )
 
+  // ログイン時に選んだタブを確認する（管理者が一般タブでログインした場合は一般画面を表示）
+  const loginTab = sessionStorage.getItem('loginTab')
+  const showAdmin = role === 'admin' && loginTab === 'admin'
+
   // ===== 管理者画面 =====
-  if (role === 'admin') return (
+  if (showAdmin) return (
     <div className={`app ${isDark ? 'dark' : ''}`}>
       <div className="container">
 
