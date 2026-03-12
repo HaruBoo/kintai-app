@@ -1,119 +1,86 @@
 /**
- * AdminAttendance — 勤怠確認タブ（管理者用）
+ * LeaderAttendance — チーム勤怠承認タブ（リーダー用）
  *
  * 機能:
- * - 社員を選択して、その月の勤怠データを閲覧できる
- * - 月の切り替えができる
- * - CSVダウンロード
+ * - 提出済みの社員一覧を月別に表示
+ * - 承認（→管理者へ）または差し戻し（→社員へ）ができる
  */
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../services/supabase'
-import { getRowClass } from '../../utils/date'
 import { downloadCSV } from '../../utils/csv'
+import { getRowClass } from '../../utils/date'
 
 // 社員の型
-type UserRow = {
-  id: string
-  email: string
-  name: string
-}
+type UserRow = { id: string; email: string; name: string }
 
 // 提出状態の型
-type SubmissionRow = {
-  status: string
-  reject_reason: string | null
-}
+type SubmissionRow = { status: string; reject_reason: string | null } | null
 
 // 勤怠レコードの型
 type AttendanceRow = {
-  date: string
-  weekday: string
-  workType: string
-  clockIn: string
-  clockOut: string
-  breakTime: string
-  workTime: string
-  note: string
+  date: string; weekday: string; workType: string
+  clockIn: string; clockOut: string; breakTime: string; workTime: string; note: string
 }
 
-function AdminAttendance() {
-  // 社員一覧
-  const [users, setUsers]   = useState<UserRow[]>([])
-  // 選択中の社員ID
-  const [selectedId, setSelectedId] = useState<string>('')
-  // 勤怠データ
-  const [records, setRecords] = useState<AttendanceRow[]>([])
-
-  // 表示月
-  const [viewYear,  setViewYear]  = useState(new Date().getFullYear())
-  const [viewMonth, setViewMonth] = useState(new Date().getMonth() + 1)
-
-  // 読み込み中フラグ
+function LeaderAttendance() {
+  const [users,        setUsers]        = useState<UserRow[]>([])
+  const [selectedId,   setSelectedId]   = useState<string>('')
+  const [records,      setRecords]      = useState<AttendanceRow[]>([])
+  const [viewYear,     setViewYear]     = useState(new Date().getFullYear())
+  const [viewMonth,    setViewMonth]    = useState(new Date().getMonth() + 1)
   const [loadingUsers,   setLoadingUsers]   = useState(true)
   const [loadingRecords, setLoadingRecords] = useState(false)
+  const [submission,   setSubmission]   = useState<SubmissionRow>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [showRejectBox,setShowRejectBox]= useState(false)
+  const [reviewing,    setReviewing]    = useState(false)
 
-  // 提出状態
-  const [submission,    setSubmission]    = useState<SubmissionRow | null>(null)
-  const [rejectReason,  setRejectReason]  = useState('')
-  const [showRejectBox, setShowRejectBox] = useState(false)
-  const [reviewing,     setReviewing]     = useState(false)
-
-  // 社員一覧を取得する
+  // 社員一覧（リーダー自身を除く employee）を取得する
   useEffect(() => {
     const fetchUsers = async () => {
       setLoadingUsers(true)
+      const { data: { user } } = await supabase.auth.getUser()
       const { data } = await supabase
         .from('profiles')
         .select('id, email, name')
         .eq('role', 'employee')
         .order('name')
-      setUsers((data ?? []) as UserRow[])
-      // 最初の社員を自動選択する
-      if (data && data.length > 0) setSelectedId(data[0].id)
+      const list = (data ?? []) as UserRow[]
+      setUsers(list)
+      if (list.length > 0) setSelectedId(list[0].id)
       setLoadingUsers(false)
     }
     fetchUsers()
   }, [])
 
-  // 選択中の社員・月が変わったら勤怠データを取得する
+  // 勤怠データを取得する
   const fetchRecords = useCallback(async () => {
     if (!selectedId) return
     setLoadingRecords(true)
-
     const prefix = `${viewYear}/${viewMonth}/`
-
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('attendance')
       .select('*')
       .eq('user_id', selectedId)
       .like('date', `${prefix}%`)
       .order('date')
-
-    if (error) {
-      console.error('勤怠データの取得に失敗しました', error)
-      setRecords([])
-    } else {
-      setRecords((data ?? []).map(row => ({
-        date:      row.date,
-        weekday:   row.weekday    ?? '',
-        workType:  row.work_type  ?? '',
-        clockIn:   row.clock_in   ?? '-',
-        clockOut:  row.clock_out  ?? '-',
-        breakTime: row.break_time ?? '-',
-        workTime:  row.work_time  ?? '-',
-        note:      row.note       ?? '',
-      })))
-    }
-
+    setRecords((data ?? []).map(row => ({
+      date:      row.date,
+      weekday:   row.weekday    ?? '',
+      workType:  row.work_type  ?? '',
+      clockIn:   row.clock_in   ?? '-',
+      clockOut:  row.clock_out  ?? '-',
+      breakTime: row.break_time ?? '-',
+      workTime:  row.work_time  ?? '-',
+      note:      row.note       ?? '',
+    })))
     setLoadingRecords(false)
   }, [selectedId, viewYear, viewMonth])
 
-  useEffect(() => {
-    fetchRecords()
-  }, [fetchRecords])
+  useEffect(() => { fetchRecords() }, [fetchRecords])
 
-  // 選択中の社員・月の提出状態を取得する
+  // 提出状態を取得する
   const fetchSubmission = useCallback(async () => {
     if (!selectedId) return
     const { data } = await supabase
@@ -128,17 +95,25 @@ function AdminAttendance() {
     setRejectReason('')
   }, [selectedId, viewYear, viewMonth])
 
-  useEffect(() => {
-    fetchSubmission()
-  }, [fetchSubmission])
+  useEffect(() => { fetchSubmission() }, [fetchSubmission])
 
-  // 承認する
+  // 月を前後に移動する
+  const prevMonth = () => {
+    if (viewMonth === 1) { setViewYear(y => y - 1); setViewMonth(12) }
+    else setViewMonth(m => m - 1)
+  }
+  const nextMonth = () => {
+    if (viewMonth === 12) { setViewYear(y => y + 1); setViewMonth(1) }
+    else setViewMonth(m => m + 1)
+  }
+
+  // リーダーが承認する（→ leader_approved へ）
   const handleApprove = async () => {
-    if (!confirm('この月の勤怠を承認しますか？')) return
+    if (!confirm('この月の勤怠を承認して管理者に送りますか？')) return
     setReviewing(true)
     await supabase
       .from('attendance_submissions')
-      .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+      .update({ status: 'leader_approved', reviewed_at: new Date().toISOString() })
       .eq('user_id', selectedId)
       .eq('year', viewYear)
       .eq('month', viewMonth)
@@ -146,7 +121,7 @@ function AdminAttendance() {
     fetchSubmission()
   }
 
-  // 差し戻す
+  // リーダーが差し戻す（→ rejected へ）
   const handleReject = async () => {
     if (!rejectReason.trim()) { alert('差し戻し理由を入力してください'); return }
     setReviewing(true)
@@ -164,86 +139,33 @@ function AdminAttendance() {
     fetchSubmission()
   }
 
-  // 月を前後に移動する
-  const prevMonth = () => {
-    if (viewMonth === 1) { setViewYear(y => y - 1); setViewMonth(12) }
-    else setViewMonth(m => m - 1)
-  }
-  const nextMonth = () => {
-    if (viewMonth === 12) { setViewYear(y => y + 1); setViewMonth(1) }
-    else setViewMonth(m => m + 1)
-  }
-
-  // 勤務日数
-  const workingDays = records.filter(r => r.clockIn !== '-').length
-
-  // 選択中の社員名を取得する
-  const selectedUser = users.find(u => u.id === selectedId)
-  const displayName  = selectedUser?.name || selectedUser?.email || ''
-
-  // 選択中の社員1人分をCSVダウンロード
+  // CSVダウンロード
   const handleDownloadCSV = () => {
+    const selectedUser = users.find(u => u.id === selectedId)
+    const displayName  = selectedUser?.name || selectedUser?.email || ''
+    const workingDays  = records.filter(r => r.clockIn !== '-').length
     const header = ['日付', '曜日', '勤務区分', '出勤', '退勤', '休憩', '実働', '備考']
     const rows   = records.map(r =>
       [r.date, r.weekday, r.workType, r.clockIn, r.clockOut, r.breakTime, r.workTime, r.note]
     )
-    const footer = [`勤務日数: ${workingDays}日`, '', '', '', '', '', '', '']
     downloadCSV(
-      [header, ...rows, footer],
+      [header, ...rows, [`勤務日数: ${workingDays}日`, '', '', '', '', '', '', '']],
       `勤怠_${displayName}_${viewYear}年${viewMonth}月.csv`
-    )
-  }
-
-  // 全社員分を1つのCSVにまとめてダウンロード
-  const handleDownloadAllCSV = async () => {
-    const prefix = `${viewYear}/${viewMonth}/`
-
-    // 全社員の勤怠データを一括取得する
-    const { data, error } = await supabase
-      .from('attendance')
-      .select('*')
-      .like('date', `${prefix}%`)
-      .order('date')
-
-    if (error || !data) return
-
-    // user_id → 社員名 の対応表を作る
-    const nameMap: Record<string, string> = {}
-    users.forEach(u => { nameMap[u.id] = u.name || u.email })
-
-    const header = ['社員名', '日付', '曜日', '勤務区分', '出勤', '退勤', '休憩', '実働', '備考']
-    const rows = data.map(row => [
-      nameMap[row.user_id] ?? row.user_id,
-      row.date,
-      row.weekday    ?? '',
-      row.work_type  ?? '',
-      row.clock_in   ?? '-',
-      row.clock_out  ?? '-',
-      row.break_time ?? '-',
-      row.work_time  ?? '-',
-      row.note       ?? '',
-    ])
-
-    downloadCSV(
-      [header, ...rows],
-      `勤怠_全社員_${viewYear}年${viewMonth}月.csv`
     )
   }
 
   if (loadingUsers) return <p className="admin-loading">読み込み中...</p>
 
+  const workingDays = records.filter(r => r.clockIn !== '-').length
+
   return (
     <div className="admin-attendance">
-      <h2 className="admin-section-title">勤怠確認</h2>
+      <h2 className="admin-section-title">チーム勤怠承認</h2>
 
-      {/* 社員選択・月切り替え */}
+      {/* ツールバー */}
       <div className="admin-attendance-toolbar">
-
-        {/* 社員選択プルダウン */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-heading)' }}>
-            社員
-          </label>
+          <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-heading)' }}>社員</label>
           <select
             className="admin-role-select"
             value={selectedId}
@@ -252,36 +174,21 @@ function AdminAttendance() {
             {users.length === 0 ? (
               <option value="">社員がいません</option>
             ) : users.map(u => (
-              <option key={u.id} value={u.id}>
-                {u.name || u.email}
-              </option>
+              <option key={u.id} value={u.id}>{u.name || u.email}</option>
             ))}
           </select>
         </div>
-
-        {/* 月切り替え */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button className="month-btn" onClick={prevMonth}>◀</button>
           <span className="month-label">{viewYear}年{viewMonth}月</span>
           <button className="month-btn" onClick={nextMonth}>▶</button>
         </div>
-
-        {/* 1人分ダウンロード */}
         <button
           className="admin-invite-btn"
           onClick={handleDownloadCSV}
           disabled={records.length === 0}
         >
           表をダウンロード
-        </button>
-
-        {/* 全社員一括ダウンロード */}
-        <button
-          className="admin-send-btn"
-          onClick={handleDownloadAllCSV}
-          disabled={users.length === 0}
-        >
-          全社員まとめてダウンロード
         </button>
       </div>
 
@@ -291,15 +198,16 @@ function AdminAttendance() {
           <span className="submission-badge none">未提出</span>
         )}
         {submission?.status === 'submitted' && (
-          <span className="submission-badge submitted">📬 リーダー承認待ち（リーダーが確認中）</span>
-        )}
-        {submission?.status === 'leader_approved' && (
           <>
-            <span className="submission-badge leader-approved">📋 最終承認待ち</span>
-            <button className="admin-invite-btn" onClick={handleApprove} disabled={reviewing}>最終承認する</button>
-            <button className="admin-delete-btn" onClick={() => setShowRejectBox(v => !v)}>差し戻す</button>
+            <span className="submission-badge submitted">📬 承認待ち</span>
+            <button className="admin-invite-btn" onClick={handleApprove} disabled={reviewing}>
+              承認して管理者へ送る
+            </button>
+            <button className="admin-delete-btn" onClick={() => setShowRejectBox(v => !v)}>
+              差し戻す
+            </button>
             {showRejectBox && (
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', width: '100%' }}>
                 <input
                   className="admin-input"
                   style={{ flex: 1 }}
@@ -311,6 +219,9 @@ function AdminAttendance() {
               </div>
             )}
           </>
+        )}
+        {submission?.status === 'leader_approved' && (
+          <span className="submission-badge leader-approved">📋 管理者承認待ち（送信済み）</span>
         )}
         {submission?.status === 'approved' && (
           <span className="submission-badge approved">✅ 最終承認済み</span>
@@ -363,4 +274,4 @@ function AdminAttendance() {
   )
 }
 
-export default AdminAttendance
+export default LeaderAttendance

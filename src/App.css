@@ -1351,9 +1351,10 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   font-weight: bold;
   font-size: 0.9rem;
 }
-.submission-status.submitted { background: #fff8e1; color: #f57c00; }
-.submission-status.approved  { background: #e8f5e9; color: #2e7d32; }
-.submission-status.rejected  { background: #fce4ec; color: #c62828; }
+.submission-status.submitted      { background: #fff8e1; color: #f57c00; }
+.submission-status.leader-approved { background: #e3f2fd; color: #1565c0; }
+.submission-status.approved        { background: #e8f5e9; color: #2e7d32; }
+.submission-status.rejected        { background: #fce4ec; color: #c62828; }
 
 /* 管理者側のバッジ */
 .submission-admin-area {
@@ -1372,10 +1373,11 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   font-size: 0.85rem;
   font-weight: bold;
 }
-.submission-badge.none      { background: #f5f5f5; color: #999; }
-.submission-badge.submitted { background: #fff8e1; color: #f57c00; }
-.submission-badge.approved  { background: #e8f5e9; color: #2e7d32; }
-.submission-badge.rejected  { background: #fce4ec; color: #c62828; }
+.submission-badge.none           { background: #f5f5f5; color: #999; }
+.submission-badge.submitted      { background: #fff8e1; color: #f57c00; }
+.submission-badge.leader-approved { background: #e3f2fd; color: #1565c0; }
+.submission-badge.approved       { background: #e8f5e9; color: #2e7d32; }
+.submission-badge.rejected       { background: #fce4ec; color: #c62828; }
 
 /* ===== 勤務区分プルダウン ===== */
 .work-type-select {

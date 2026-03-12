@@ -4,6 +4,7 @@ import KintaiPage from './KintaiPage'
 import KotsuPage from './KotsuPage'
 import PayslipPage from './PayslipPage'
 import ProfilePage from './ProfilePage'
+import LeaderPage from './LeaderPage'
 import LoginPage from './LoginPage'
 import AdminPage from './AdminPage'
 import SetPasswordPage from './SetPasswordPage'
@@ -21,7 +22,7 @@ const isDaytime = () => {
 }
 
 function App() {
-  const [page, setPage] = useState<'kintai' | 'kotsu' | 'payslip' | 'profile'>('kintai')
+  const [page, setPage] = useState<'kintai' | 'kotsu' | 'payslip' | 'profile' | 'leader'>('kintai')
 
   // ログインセッション（null = 未ログイン）
   const [session, setSession] = useState<Session | null>(null)
@@ -246,6 +247,9 @@ function App() {
           <button className={`nav-tab ${page === 'kotsu'   ? 'nav-tab-active' : ''}`} onClick={() => setPage('kotsu')}  >交通費</button>
           <button className={`nav-tab ${page === 'payslip' ? 'nav-tab-active' : ''}`} onClick={() => setPage('payslip')}>給与明細</button>
           <button className={`nav-tab ${page === 'profile' ? 'nav-tab-active' : ''}`} onClick={() => setPage('profile')}>プロフィール</button>
+          {role === 'leader' && (
+            <button className={`nav-tab ${page === 'leader' ? 'nav-tab-active' : ''}`} onClick={() => setPage('leader')}>チーム承認</button>
+          )}
         </nav>
 
         {/* profile は PIIを扱うページにのみ渡す */}
@@ -253,6 +257,7 @@ function App() {
         {page === 'kotsu'   && <KotsuPage   key={`kotsu-${viewYear}-${viewMonth}`}  viewYear={viewYear} viewMonth={viewMonth} />}
         {page === 'payslip' && <PayslipPage />}
         {page === 'profile' && <ProfilePage />}
+        {page === 'leader'  && <LeaderPage />}
 
       </div>
     </div>

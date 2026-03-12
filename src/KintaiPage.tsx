@@ -14,7 +14,7 @@ type Props = {
 }
 
 // 提出状態の型
-type SubmissionStatus = 'none' | 'submitted' | 'approved' | 'rejected'
+type SubmissionStatus = 'none' | 'submitted' | 'leader_approved' | 'approved' | 'rejected'
 
 function KintaiPage({ viewYear, viewMonth, profile }: Props) {
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -128,8 +128,8 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
   // 勤務日数（出勤打刻がある日だけカウント）
   const workingDays = records.filter(r => r.clockIn !== '-').length
 
-  // 提出済み or 承認済みのときは編集できない
-  const isLocked = submissionStatus === 'submitted' || submissionStatus === 'approved'
+  // 提出済み・リーダー承認済み・最終承認済みのときは編集できない
+  const isLocked = submissionStatus === 'submitted' || submissionStatus === 'leader_approved' || submissionStatus === 'approved'
 
   // 日付をクリックして編集モードにする
   const handleDateClick = (index: number, currentDate: string) => {
@@ -433,13 +433,18 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
         )}
         {submissionStatus === 'submitted' && (
           <div className="submission-status submitted">
-            <span>📬 承認待ち</span>
+            <span>📬 リーダー承認待ち</span>
             <button className="btn-cancel-submit" onClick={handleCancelSubmit}>提出を取り消す</button>
+          </div>
+        )}
+        {submissionStatus === 'leader_approved' && (
+          <div className="submission-status leader-approved">
+            <span>📋 管理者承認待ち</span>
           </div>
         )}
         {submissionStatus === 'approved' && (
           <div className="submission-status approved">
-            <span>✅ 承認済み</span>
+            <span>✅ 最終承認済み</span>
           </div>
         )}
         {submissionStatus === 'rejected' && (

@@ -16,7 +16,7 @@ type UserRow = {
   id: string
   email: string
   name: string
-  role: 'admin' | 'employee'
+  role: 'admin' | 'leader' | 'employee'
 }
 
 // Edge Function を呼び出す共通関数
@@ -48,7 +48,7 @@ function AdminUsers() {
 
   // 新規招待フォーム
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole,  setInviteRole]  = useState<'admin' | 'employee'>('employee')
+  const [inviteRole,  setInviteRole]  = useState<'admin' | 'leader' | 'employee'>('employee')
   const [inviting,    setInviting]    = useState(false)
   const [inviteMsg,   setInviteMsg]   = useState<string | null>(null)
 
@@ -77,7 +77,7 @@ function AdminUsers() {
   }, [fetchUsers])
 
   // ロールを変更する
-  const changeRole = async (userId: string, newRole: 'admin' | 'employee') => {
+  const changeRole = async (userId: string, newRole: 'admin' | 'leader' | 'employee') => {
     const { error } = await supabase
       .from('profiles')
       .update({ role: newRole })
@@ -162,9 +162,10 @@ function AdminUsers() {
                 <select
                   className="admin-role-select"
                   value={user.role}
-                  onChange={e => changeRole(user.id, e.target.value as 'admin' | 'employee')}
+                  onChange={e => changeRole(user.id, e.target.value as 'admin' | 'leader' | 'employee')}
                 >
                   <option value="employee">従業員</option>
+                  <option value="leader">リーダー</option>
                   <option value="admin">管理者</option>
                 </select>
               </td>
@@ -203,9 +204,10 @@ function AdminUsers() {
         <select
           className="admin-role-select"
           value={inviteRole}
-          onChange={e => setInviteRole(e.target.value as 'admin' | 'employee')}
+          onChange={e => setInviteRole(e.target.value as 'admin' | 'leader' | 'employee')}
         >
           <option value="employee">従業員</option>
+          <option value="leader">リーダー</option>
           <option value="admin">管理者</option>
         </select>
         <button

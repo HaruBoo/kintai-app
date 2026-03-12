@@ -12,7 +12,7 @@ import { supabase } from '../services/supabase'
 import type { Session } from '@supabase/supabase-js'
 
 // ロールの型
-export type Role = 'admin' | 'employee'
+export type Role = 'admin' | 'leader' | 'employee'
 
 export function useRole(session: Session | null) {
   // null = 読み込み中、'admin' or 'employee' = 取得完了
@@ -38,8 +38,10 @@ export function useRole(session: Session | null) {
           console.warn('ロール取得に失敗しました。employee として扱います。', error)
           setRole('employee')
         } else {
-          // 'admin' 以外はすべて 'employee' として扱う（安全側に倒す）
-          setRole(data.role === 'admin' ? 'admin' : 'employee')
+          // 'admin' / 'leader' 以外はすべて 'employee' として扱う（安全側に倒す）
+          if (data.role === 'admin') setRole('admin')
+          else if (data.role === 'leader') setRole('leader')
+          else setRole('employee')
         }
       })
   }, [session])
