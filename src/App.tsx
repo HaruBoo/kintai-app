@@ -4,12 +4,16 @@ import KintaiPage from './KintaiPage'
 import KotsuPage from './KotsuPage'
 import LoginPage from './LoginPage'
 import AdminPage from './AdminPage'
+import SetPasswordPage from './SetPasswordPage'
 import ProfileSection from './components/ProfileSection'
 import { emptyProfile } from './services/profileService'
 import { supabase } from './services/supabase'
 import { useRole } from './hooks/useRole'
 import type { Profile } from './types/profile'
 import type { Session } from '@supabase/supabase-js'
+
+// 招待リンクから来たユーザーかどうかを、Supabase がハッシュを消す前に確認する
+const isInviteFlow = window.location.hash.includes('type=invite')
 
 type ColorMode = 'auto' | 'light' | 'dark'
 
@@ -26,6 +30,9 @@ function App() {
 
   // セッションの読み込みが完了したか（完了前は画面を表示しない）
   const [sessionLoaded, setSessionLoaded] = useState(false)
+
+  // 招待リンクから来たユーザーにパスワード設定画面を表示するフラグ
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(isInviteFlow)
 
   // カラーモードのみ localStorage に保存（PIIは保存しない）
   const [colorMode, setColorMode] = useState<ColorMode>(() =>
@@ -108,6 +115,13 @@ function App() {
   if (!session) return (
     <div className={`app ${isDark ? 'dark' : ''}`}>
       <LoginPage />
+    </div>
+  )
+
+  // 招待リンクからログインした場合はパスワード設定画面を表示
+  if (needsPasswordSetup) return (
+    <div className={`app ${isDark ? 'dark' : ''}`}>
+      <SetPasswordPage onComplete={() => setNeedsPasswordSetup(false)} />
     </div>
   )
 
