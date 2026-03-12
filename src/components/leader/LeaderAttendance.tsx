@@ -40,7 +40,6 @@ function LeaderAttendance() {
   useEffect(() => {
     const fetchUsers = async () => {
       setLoadingUsers(true)
-      const { data: { user } } = await supabase.auth.getUser()
       const { data } = await supabase
         .from('profiles')
         .select('id, email, name')
