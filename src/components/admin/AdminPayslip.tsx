@@ -254,7 +254,7 @@ function AdminPayslip() {
 
       {/* アップロード済み一覧 */}
       <h3 className="admin-section-title" style={{ marginTop: '32px', fontSize: '1rem' }}>
-        {displayName} のアップロード済み給与明細
+        {displayName} のアップロード済み給与明細（{payslips.length}件）
       </h3>
 
       {loadingList ? (
