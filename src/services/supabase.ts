@@ -13,7 +13,9 @@ const supabaseKey  = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 // createClient を呼ぶ前にハッシュを確認する
 // （createClient が URL ハッシュを読み取って消してしまうため、先に確認が必要）
-export const isInviteFlow = window.location.hash.includes('type=invite')
+// type=invite（招待リンク）または type=recovery（パスワードリセットリンク）の両方を検出する
+const _hash = window.location.hash
+export const isInviteFlow = _hash.includes('type=invite') || _hash.includes('type=recovery')
 
 // Supabase クライアントを作成してエクスポート
 // このオブジェクトを使ってログイン・データ取得などを行う

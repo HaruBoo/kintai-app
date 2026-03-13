@@ -291,6 +291,23 @@
   cursor: not-allowed;
 }
 
+/* 初回ログイン・パスワードリセットリンク */
+.login-reset-link {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 6px 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-align: center;
+  transition: color 0.15s;
+}
+.login-reset-link:hover { color: var(--text-accent); }
+
 /* ===== ログイン画面タブ ===== */
 .login-tabs {
   display: flex;

@@ -67,8 +67,12 @@ function App() {
     })
 
     // ログイン・ログアウトの変化を監視する
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
+      // パスワードリセットリンクからアクセスした場合もパスワード設定画面を表示する
+      if (event === 'PASSWORD_RECOVERY') {
+        setNeedsPasswordSetup(true)
+      }
     })
 
     // コンポーネントが消えるときに監視を止める

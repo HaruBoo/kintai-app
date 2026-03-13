@@ -54,7 +54,7 @@ function SetPasswordPage({ onComplete }: Props) {
     <div className="login-page">
       <div className="login-card">
         <p className="swell login-logo">Swell</p>
-        <p className="login-subtitle">パスワードを設定してください</p>
+        <p className="login-subtitle">新しいパスワードを設定</p>
 
         {error && <p className="login-error">{error}</p>}
 
