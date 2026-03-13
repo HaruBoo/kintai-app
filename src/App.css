@@ -1525,6 +1525,62 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   text-align: center;
 }
 
+/* ===== 日次提出（行ごとの提出ボタン・バッジ） ===== */
+.daily-submit-cell {
+  white-space: nowrap;
+  min-width: 100px;
+}
+
+/* 提出ボタン */
+.btn-daily-submit {
+  padding: 3px 10px;
+  background: #00bcd4;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.btn-daily-submit:hover { background: #0097a7; }
+
+/* 取消ボタン */
+.btn-daily-cancel {
+  padding: 3px 8px;
+  background: none;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-daily-cancel:hover { color: var(--text-primary); }
+
+/* 日次ステータスバッジ */
+.daily-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: bold;
+  border-radius: 6px;
+  padding: 3px 8px;
+  flex-wrap: wrap;
+}
+.daily-badge.submitted      { background: #fff8e1; color: #f57c00; }
+.daily-badge.approved       { background: #e8f5e9; color: #2e7d32; }
+.daily-badge.rejected       { background: #fce4ec; color: #c62828; }
+
+/* 差し戻し理由の補足テキスト */
+.daily-reject-reason {
+  font-size: 0.75rem;
+  font-weight: normal;
+  opacity: 0.85;
+}
+
 /* ===== チーム管理 ===== */
 .team-card {
   background: var(--bg-container);

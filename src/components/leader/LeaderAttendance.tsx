@@ -1,9 +1,9 @@
 /**
- * LeaderAttendance — チーム勤怠承認タブ（リーダー用）
+ * LeaderAttendance — チーム勤怠確認・日次承認タブ（リーダー用）
  *
  * 機能:
- * - 提出済みの社員一覧を月別に表示
- * - 承認（→管理者へ）または差し戻し（→社員へ）ができる
+ * - チーム社員の月別勤怠を表示
+ * - 提出された日（daily_submissions）を行ごとに承認・差し戻し
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -14,34 +14,36 @@ import { getRowClass } from '../../utils/date'
 // 社員の型
 type UserRow = { id: string; email: string; name: string }
 
-// 提出状態の型
-type SubmissionRow = { status: string; reject_reason: string | null } | null
-
 // 勤怠レコードの型
 type AttendanceRow = {
   date: string; weekday: string; workType: string
   clockIn: string; clockOut: string; breakTime: string; workTime: string; note: string
 }
 
+// 日次提出の型
+type DailySub = { status: 'submitted' | 'approved' | 'rejected'; reject_reason: string | null }
+
 function LeaderAttendance() {
-  const [users,        setUsers]        = useState<UserRow[]>([])
-  const [selectedId,   setSelectedId]   = useState<string>('')
-  const [records,      setRecords]      = useState<AttendanceRow[]>([])
-  const [viewYear,     setViewYear]     = useState(new Date().getFullYear())
-  const [viewMonth,    setViewMonth]    = useState(new Date().getMonth() + 1)
+  const [users,          setUsers]          = useState<UserRow[]>([])
+  const [selectedId,     setSelectedId]     = useState<string>('')
+  const [records,        setRecords]        = useState<AttendanceRow[]>([])
+  const [viewYear,       setViewYear]       = useState(new Date().getFullYear())
+  const [viewMonth,      setViewMonth]      = useState(new Date().getMonth() + 1)
   const [loadingUsers,   setLoadingUsers]   = useState(true)
   const [loadingRecords, setLoadingRecords] = useState(false)
-  const [submission,   setSubmission]   = useState<SubmissionRow>(null)
-  const [rejectReason, setRejectReason] = useState('')
-  const [showRejectBox,setShowRejectBox]= useState(false)
-  const [reviewing,    setReviewing]    = useState(false)
+  const [reviewing,      setReviewing]      = useState(false)
+
+  // 日次提出状態（日付 → DailySub のマップ）
+  const [dailyStatuses,  setDailyStatuses]  = useState<Map<string, DailySub>>(new Map())
+
+  // 差し戻し入力（どの日の差し戻しボックスが開いているか）
+  const [rejectDate,  setRejectDate]  = useState<string | null>(null)
+  const [rejectValue, setRejectValue] = useState('')
 
   // 自分のチームの社員一覧を取得する
   useEffect(() => {
     const fetchUsers = async () => {
       setLoadingUsers(true)
-
-      // リーダー自身のチームIDを取得する
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setLoadingUsers(false); return }
 
@@ -52,15 +54,8 @@ function LeaderAttendance() {
         .single()
 
       const teamId = myProfile?.team_id ?? null
+      if (!teamId) { setUsers([]); setLoadingUsers(false); return }
 
-      // チームが設定されていない場合は空リストを返す
-      if (!teamId) {
-        setUsers([])
-        setLoadingUsers(false)
-        return
-      }
-
-      // 同じチームの employee のみ取得する
       const { data } = await supabase
         .from('profiles')
         .select('id, email, name')
@@ -102,22 +97,25 @@ function LeaderAttendance() {
 
   useEffect(() => { fetchRecords() }, [fetchRecords])
 
-  // 提出状態を取得する
-  const fetchSubmission = useCallback(async () => {
+  // 日次提出状態を取得する
+  const fetchDailySubmissions = useCallback(async () => {
     if (!selectedId) return
+    const prefix = `${viewYear}/${viewMonth}/`
     const { data } = await supabase
-      .from('attendance_submissions')
-      .select('status, reject_reason')
+      .from('daily_submissions')
+      .select('date, status, reject_reason')
       .eq('user_id', selectedId)
-      .eq('year', viewYear)
-      .eq('month', viewMonth)
-      .maybeSingle()
-    setSubmission(data ?? null)
-    setShowRejectBox(false)
-    setRejectReason('')
+      .like('date', `${prefix}%`)
+    const map = new Map<string, DailySub>()
+    ;(data ?? []).forEach(row => {
+      map.set(row.date, { status: row.status, reject_reason: row.reject_reason })
+    })
+    setDailyStatuses(map)
+    setRejectDate(null)
+    setRejectValue('')
   }, [selectedId, viewYear, viewMonth])
 
-  useEffect(() => { fetchSubmission() }, [fetchSubmission])
+  useEffect(() => { fetchDailySubmissions() }, [fetchDailySubmissions])
 
   // 月を前後に移動する
   const prevMonth = () => {
@@ -129,36 +127,37 @@ function LeaderAttendance() {
     else setViewMonth(m => m + 1)
   }
 
-  // リーダーが承認する（→ leader_approved へ）
-  const handleApprove = async () => {
-    if (!confirm('この月の勤怠を承認して管理者に送りますか？')) return
+  // 1日を承認する
+  const handleApproveDay = async (date: string) => {
     setReviewing(true)
-    await supabase
-      .from('attendance_submissions')
-      .update({ status: 'leader_approved', reviewed_at: new Date().toISOString() })
+    const { error } = await supabase
+      .from('daily_submissions')
+      .update({ status: 'approved', reviewed_at: new Date().toISOString() })
       .eq('user_id', selectedId)
-      .eq('year', viewYear)
-      .eq('month', viewMonth)
+      .eq('date', date)
+    if (error) { alert('承認に失敗しました: ' + error.message) }
+    else {
+      setDailyStatuses(prev => new Map(prev).set(date, { status: 'approved', reject_reason: null }))
+    }
     setReviewing(false)
-    fetchSubmission()
   }
 
-  // リーダーが差し戻す（→ rejected へ）
-  const handleReject = async () => {
-    if (!rejectReason.trim()) { alert('差し戻し理由を入力してください'); return }
+  // 1日を差し戻す
+  const handleRejectDay = async (date: string) => {
+    if (!rejectValue.trim()) { alert('差し戻し理由を入力してください'); return }
     setReviewing(true)
-    await supabase
-      .from('attendance_submissions')
-      .update({
-        status:        'rejected',
-        reject_reason: rejectReason,
-        reviewed_at:   new Date().toISOString(),
-      })
+    const { error } = await supabase
+      .from('daily_submissions')
+      .update({ status: 'rejected', reject_reason: rejectValue.trim(), reviewed_at: new Date().toISOString() })
       .eq('user_id', selectedId)
-      .eq('year', viewYear)
-      .eq('month', viewMonth)
+      .eq('date', date)
+    if (error) { alert('差し戻しに失敗しました: ' + error.message) }
+    else {
+      setDailyStatuses(prev => new Map(prev).set(date, { status: 'rejected', reject_reason: rejectValue.trim() }))
+      setRejectDate(null)
+      setRejectValue('')
+    }
     setReviewing(false)
-    fetchSubmission()
   }
 
   // CSVダウンロード
@@ -166,22 +165,26 @@ function LeaderAttendance() {
     const selectedUser = users.find(u => u.id === selectedId)
     const displayName  = selectedUser?.name || selectedUser?.email || ''
     const workingDays  = records.filter(r => r.clockIn !== '-').length
-    const header = ['日付', '曜日', '勤務区分', '出勤', '退勤', '休憩', '実働', '備考']
-    const rows   = records.map(r =>
-      [r.date, r.weekday, r.workType, r.clockIn, r.clockOut, r.breakTime, r.workTime, r.note]
-    )
+    const header = ['日付', '曜日', '勤務区分', '出勤', '退勤', '休憩', '実働', '備考', '提出状態']
+    const rows   = records.map(r => {
+      const sub = dailyStatuses.get(r.date)
+      const statusLabel = !sub ? '未提出'
+        : sub.status === 'submitted' ? '承認待ち'
+        : sub.status === 'approved'  ? '承認済み'
+        : `差し戻し（${sub.reject_reason ?? ''}）`
+      return [r.date, r.weekday, r.workType, r.clockIn, r.clockOut, r.breakTime, r.workTime, r.note, statusLabel]
+    })
     downloadCSV(
-      [header, ...rows, [`勤務日数: ${workingDays}日`, '', '', '', '', '', '', '']],
+      [header, ...rows, [`勤務日数: ${workingDays}日`, '', '', '', '', '', '', '', '']],
       `勤怠_${displayName}_${viewYear}年${viewMonth}月.csv`
     )
   }
 
   if (loadingUsers) return <p className="admin-loading">読み込み中...</p>
 
-  // チームが未設定の場合は案内を表示する
-  if (users.length === 0 && !loadingUsers) return (
+  if (users.length === 0) return (
     <div className="admin-attendance">
-      <h2 className="admin-section-title">チーム勤怠承認</h2>
+      <h2 className="admin-section-title">チーム勤怠確認</h2>
       <p style={{ color: 'var(--text-muted)', padding: '32px', textAlign: 'center' }}>
         チームに所属していないか、チームに社員がいません。<br />
         管理者に「チーム管理」タブでチームへの追加を依頼してください。
@@ -189,11 +192,12 @@ function LeaderAttendance() {
     </div>
   )
 
-  const workingDays = records.filter(r => r.clockIn !== '-').length
+  const workingDays   = records.filter(r => r.clockIn !== '-').length
+  const submittedCount = [...dailyStatuses.values()].filter(s => s.status === 'submitted').length
 
   return (
     <div className="admin-attendance">
-      <h2 className="admin-section-title">チーム勤怠承認</h2>
+      <h2 className="admin-section-title">チーム勤怠確認</h2>
 
       {/* ツールバー */}
       <div className="admin-attendance-toolbar">
@@ -204,9 +208,7 @@ function LeaderAttendance() {
             value={selectedId}
             onChange={e => setSelectedId(e.target.value)}
           >
-            {users.length === 0 ? (
-              <option value="">社員がいません</option>
-            ) : users.map(u => (
+            {users.map(u => (
               <option key={u.id} value={u.id}>{u.name || u.email}</option>
             ))}
           </select>
@@ -216,53 +218,20 @@ function LeaderAttendance() {
           <span className="month-label">{viewYear}年{viewMonth}月</span>
           <button className="month-btn" onClick={nextMonth}>▶</button>
         </div>
-        <button
-          className="admin-invite-btn"
-          onClick={handleDownloadCSV}
-          disabled={records.length === 0}
-        >
+        <button className="admin-invite-btn" onClick={handleDownloadCSV} disabled={records.length === 0}>
           表をダウンロード
         </button>
       </div>
 
-      {/* 提出状態・承認エリア */}
-      <div className="submission-admin-area">
-        {!submission && (
-          <span className="submission-badge none">未提出</span>
-        )}
-        {submission?.status === 'submitted' && (
-          <>
-            <span className="submission-badge submitted">📬 承認待ち</span>
-            <button className="admin-invite-btn" onClick={handleApprove} disabled={reviewing}>
-              承認して管理者へ送る
-            </button>
-            <button className="admin-delete-btn" onClick={() => setShowRejectBox(v => !v)}>
-              差し戻す
-            </button>
-            {showRejectBox && (
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px', width: '100%' }}>
-                <input
-                  className="admin-input"
-                  style={{ flex: 1 }}
-                  placeholder="差し戻し理由を入力"
-                  value={rejectReason}
-                  onChange={e => setRejectReason(e.target.value)}
-                />
-                <button className="admin-delete-btn" onClick={handleReject} disabled={reviewing}>送信</button>
-              </div>
-            )}
-          </>
-        )}
-        {submission?.status === 'leader_approved' && (
-          <span className="submission-badge leader-approved">📋 管理者承認待ち（送信済み）</span>
-        )}
-        {submission?.status === 'approved' && (
-          <span className="submission-badge approved">✅ 最終承認済み</span>
-        )}
-        {submission?.status === 'rejected' && (
-          <span className="submission-badge rejected">❌ 差し戻し済み：{submission.reject_reason}</span>
-        )}
-      </div>
+      {/* 承認待ちバッジ */}
+      {submittedCount > 0 && (
+        <div style={{ marginBottom: '12px' }}>
+          <span className="submission-badge submitted">📬 承認待ち {submittedCount}件</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '8px' }}>
+            ↓ 表の行で承認・差し戻しができます
+          </span>
+        </div>
+      )}
 
       {/* 勤怠テーブル */}
       {loadingRecords ? (
@@ -276,28 +245,103 @@ function LeaderAttendance() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>日付</th><th>曜日</th><th>勤務区分</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>備考</th>
+                  <th>日付</th><th>曜日</th><th>勤務区分</th><th>出勤</th><th>退勤</th>
+                  <th>休憩</th><th>実働</th><th>備考</th><th>提出状態</th>
                 </tr>
               </thead>
               <tbody>
                 {records.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+                    <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
                       データがありません
                     </td>
                   </tr>
-                ) : records.map((r, i) => (
-                  <tr key={i} className={getRowClass(r.date, r.weekday)}>
-                    <td>{r.date}</td>
-                    <td>{r.weekday}</td>
-                    <td>{r.workType || '—'}</td>
-                    <td>{r.clockIn}</td>
-                    <td>{r.clockOut}</td>
-                    <td>{r.breakTime}</td>
-                    <td>{r.workTime}</td>
-                    <td>{r.note}</td>
-                  </tr>
-                ))}
+                ) : records.map((r, i) => {
+                  const daySub = dailyStatuses.get(r.date)
+                  return (
+                    <>
+                      <tr key={i} className={getRowClass(r.date, r.weekday)}>
+                        <td>{r.date}</td>
+                        <td>{r.weekday}</td>
+                        <td>{r.workType || '—'}</td>
+                        <td>{r.clockIn}</td>
+                        <td>{r.clockOut}</td>
+                        <td>{r.breakTime}</td>
+                        <td>{r.workTime}</td>
+                        <td>{r.note || '—'}</td>
+                        <td className="daily-submit-cell">
+                          {!daySub && (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>未提出</span>
+                          )}
+                          {daySub?.status === 'submitted' && (
+                            <span className="daily-badge submitted" style={{ flexWrap: 'wrap', gap: '4px' }}>
+                              承認待ち
+                              <button
+                                className="btn-daily-submit"
+                                onClick={() => handleApproveDay(r.date)}
+                                disabled={reviewing}
+                              >
+                                承認
+                              </button>
+                              <button
+                                className="btn-daily-cancel"
+                                onClick={() => { setRejectDate(r.date); setRejectValue('') }}
+                              >
+                                差し戻し
+                              </button>
+                            </span>
+                          )}
+                          {daySub?.status === 'approved' && (
+                            <span className="daily-badge approved">✅ 承認済み</span>
+                          )}
+                          {daySub?.status === 'rejected' && (
+                            <span className="daily-badge rejected">
+                              ❌ 差し戻し済み
+                              {daySub.reject_reason && (
+                                <span className="daily-reject-reason">（{daySub.reject_reason}）</span>
+                              )}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+
+                      {/* 差し戻し理由入力行（その日の行の直下に表示） */}
+                      {rejectDate === r.date && (
+                        <tr key={`reject-${i}`}>
+                          <td colSpan={9} style={{ background: 'var(--bg-row-sun)', padding: '8px 12px' }}>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                差し戻し理由：
+                              </span>
+                              <input
+                                className="admin-input"
+                                style={{ flex: 1 }}
+                                placeholder="理由を入力してください"
+                                value={rejectValue}
+                                onChange={e => setRejectValue(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleRejectDay(r.date)}
+                                autoFocus
+                              />
+                              <button
+                                className="admin-delete-btn"
+                                onClick={() => handleRejectDay(r.date)}
+                                disabled={reviewing}
+                              >
+                                送信
+                              </button>
+                              <button
+                                className="btn-delete-no"
+                                onClick={() => { setRejectDate(null); setRejectValue('') }}
+                              >
+                                取消
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  )
+                })}
               </tbody>
             </table>
           </div>
