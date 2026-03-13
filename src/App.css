@@ -1347,19 +1347,20 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
 
 /* 大きな提出ボタン */
 .btn-submit-large {
-  padding: 12px 32px;
-  background: var(--accent);
-  color: white;
+  padding: 14px 40px;
+  background: #00bcd4;
+  color: #fff;
   border: none;
   border-radius: 10px;
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: bold;
   cursor: pointer;
   white-space: nowrap;
-  transition: opacity 0.2s;
+  box-shadow: 0 3px 10px rgba(0, 188, 212, 0.45);
+  transition: background 0.2s, box-shadow 0.2s;
 }
-.btn-submit-large:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-submit-large:hover:not(:disabled) { opacity: 0.85; }
+.btn-submit-large:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+.btn-submit-large:hover:not(:disabled) { background: #0097a7; box-shadow: 0 4px 14px rgba(0, 151, 167, 0.5); }
 
 /* ===== 勤怠提出・承認エリア（旧） ===== */
 .submission-area {
@@ -1373,7 +1374,7 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
 /* 提出ボタン */
 .btn-submit {
   padding: 10px 24px;
-  background: var(--accent);
+  background: #00bcd4;
   color: white;
   border: none;
   border-radius: 8px;

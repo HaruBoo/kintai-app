@@ -247,8 +247,8 @@ function App() {
           <button className={`nav-tab ${page === 'kintai'  ? 'nav-tab-active' : ''}`} onClick={() => setPage('kintai')} >勤怠</button>
           <button className={`nav-tab ${page === 'kotsu'   ? 'nav-tab-active' : ''}`} onClick={() => setPage('kotsu')}  >交通費</button>
           <button className={`nav-tab ${page === 'payslip' ? 'nav-tab-active' : ''}`} onClick={() => setPage('payslip')}>給与明細</button>
-          <button className={`nav-tab ${page === 'profile' ? 'nav-tab-active' : ''}`} onClick={() => setPage('profile')}>プロフィール</button>
           <button className={`nav-tab ${page === 'submit'  ? 'nav-tab-active' : ''}`} onClick={() => setPage('submit')} >提出</button>
+          <button className={`nav-tab ${page === 'profile' ? 'nav-tab-active' : ''}`} onClick={() => setPage('profile')}>プロフィール</button>
           {role === 'leader' && (
             <button className={`nav-tab ${page === 'leader' ? 'nav-tab-active' : ''}`} onClick={() => setPage('leader')}>チーム承認</button>
           )}
