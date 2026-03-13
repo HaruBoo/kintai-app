@@ -39,9 +39,8 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
   const [editBreakIndex, setEditBreakIndex] = useState<number | null>(null)
   const [editBreakValue, setEditBreakValue] = useState('')
   // 提出状態
-  const [submissionStatus,   setSubmissionStatus]   = useState<SubmissionStatus>('none')
-  const [rejectReason,       setRejectReason]       = useState<string>('')
-  const [submitting,         setSubmitting]         = useState(false)
+  const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('none')
+  const [rejectReason,     setRejectReason]     = useState<string>('')
 
   // 1秒ごとに時刻を更新
   useEffect(() => {
@@ -285,52 +284,6 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
     }
   }
 
-  // 勤怠を提出する
-  const handleSubmit = async () => {
-    if (!confirm(`${viewYear}年${viewMonth}月の勤怠を提出しますか？\n提出後は管理者が承認するまで編集できません。`)) return
-    setSubmitting(true)
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSubmitting(false); return }
-
-    const { error } = await supabase
-      .from('attendance_submissions')
-      .upsert({
-        user_id:      user.id,
-        year:         viewYear,
-        month:        viewMonth,
-        status:       'submitted',
-        reject_reason: null,
-        submitted_at: new Date().toISOString(),
-        reviewed_at:  null,
-      }, { onConflict: 'user_id,year,month' })
-
-    if (error) {
-      alert('提出に失敗しました: ' + error.message)
-    } else {
-      setSubmissionStatus('submitted')
-    }
-    setSubmitting(false)
-  }
-
-  // 提出を取り消す（差し戻しされた場合も使う）
-  const handleCancelSubmit = async () => {
-    if (!confirm('提出を取り消しますか？')) return
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    await supabase
-      .from('attendance_submissions')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('year', viewYear)
-      .eq('month', viewMonth)
-
-    setSubmissionStatus('none')
-    setRejectReason('')
-  }
-
   // 退勤打刻
   const handleClockOut = async () => {
     if (!isCurrentMonth) { alert('過去・未来の月には打刻できません'); return }
@@ -559,54 +512,16 @@ function KintaiPage({ viewYear, viewMonth, profile }: Props) {
         )}
       </div>
 
-      {/* 提出ボタン・ステータス（テーブルの下に大きく表示） */}
-      <div className="submission-panel">
-        {submissionStatus === 'none' && (
-          <div className="submission-panel-inner">
-            <div className="submission-panel-text">
-              <p className="submission-panel-title">勤怠の提出</p>
-              <p className="submission-panel-desc">内容を確認したら、リーダーに提出してください。提出後は編集できなくなります。</p>
-            </div>
-            <button
-              className="btn-submit-large"
-              onClick={handleSubmit}
-              disabled={submitting || records.length === 0}
-            >
-              {submitting ? '提出中...' : '提出する'}
-            </button>
-          </div>
-        )}
-        {submissionStatus === 'submitted' && (
-          <div className="submission-panel-inner submitted">
-            <div className="submission-panel-text">
-              <p className="submission-panel-title">📬 リーダー承認待ち</p>
-              <p className="submission-panel-desc">リーダーが確認中です。承認されるまでお待ちください。</p>
-            </div>
-            <button className="btn-cancel-submit" onClick={handleCancelSubmit}>提出を取り消す</button>
-          </div>
-        )}
-        {submissionStatus === 'leader_approved' && (
-          <div className="submission-panel-inner leader-approved">
-            <p className="submission-panel-title">📋 管理者承認待ち</p>
-            <p className="submission-panel-desc">リーダーが承認しました。管理者の最終確認をお待ちください。</p>
-          </div>
-        )}
-        {submissionStatus === 'approved' && (
-          <div className="submission-panel-inner approved">
-            <p className="submission-panel-title">✅ 最終承認済み</p>
-            <p className="submission-panel-desc">この月の勤怠は承認されました。</p>
-          </div>
-        )}
-        {submissionStatus === 'rejected' && (
-          <div className="submission-panel-inner rejected">
-            <div className="submission-panel-text">
-              <p className="submission-panel-title">❌ 差し戻し</p>
-              <p className="submission-panel-desc">理由：{rejectReason}</p>
-            </div>
-            <button className="btn-submit-large" onClick={handleCancelSubmit}>修正して再提出する</button>
-          </div>
-        )}
-      </div>
+      {/* 提出ステータスバッジ（詳細・操作は「提出」タブから） */}
+      {submissionStatus !== 'none' && (
+        <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {submissionStatus === 'submitted'      && <span className="submission-badge submitted">📬 承認待ち（リーダー確認中）</span>}
+          {submissionStatus === 'leader_approved' && <span className="submission-badge leader-approved">📋 管理者承認待ち</span>}
+          {submissionStatus === 'approved'       && <span className="submission-badge approved">✅ 最終承認済み</span>}
+          {submissionStatus === 'rejected'       && <span className="submission-badge rejected">❌ 差し戻し：{rejectReason}</span>}
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>※ 操作は「提出」タブから</span>
+        </div>
+      )}
     </div>
   )
 }

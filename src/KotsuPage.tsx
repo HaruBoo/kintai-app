@@ -278,13 +278,11 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
     <div>
       <h2 className="page-title">交通費申請</h2>
 
-      {/* ロック中のメッセージ */}
+      {/* 提出済みバッジ（編集ロック中） */}
       {isLocked && (
-        <div className="submission-panel">
-          <div className="submission-panel-inner submitted">
-            <p className="submission-panel-title">📬 提出済み・編集不可</p>
-            <p className="submission-panel-desc">提出済みのため追加・編集・削除はできません。「提出」タブから取り消せます。</p>
-          </div>
+        <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span className="submission-badge submitted">📬 提出済み・編集不可</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>※ 取り消しは「提出」タブから</span>
         </div>
       )}
 
