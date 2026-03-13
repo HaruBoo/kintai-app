@@ -36,15 +36,38 @@ function LeaderAttendance() {
   const [showRejectBox,setShowRejectBox]= useState(false)
   const [reviewing,    setReviewing]    = useState(false)
 
-  // 社員一覧（リーダー自身を除く employee）を取得する
+  // 自分のチームの社員一覧を取得する
   useEffect(() => {
     const fetchUsers = async () => {
       setLoadingUsers(true)
+
+      // リーダー自身のチームIDを取得する
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setLoadingUsers(false); return }
+
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('team_id')
+        .eq('id', user.id)
+        .single()
+
+      const teamId = myProfile?.team_id ?? null
+
+      // チームが設定されていない場合は空リストを返す
+      if (!teamId) {
+        setUsers([])
+        setLoadingUsers(false)
+        return
+      }
+
+      // 同じチームの employee のみ取得する
       const { data } = await supabase
         .from('profiles')
         .select('id, email, name')
         .eq('role', 'employee')
+        .eq('team_id', teamId)
         .order('name')
+
       const list = (data ?? []) as UserRow[]
       setUsers(list)
       if (list.length > 0) setSelectedId(list[0].id)
@@ -154,6 +177,17 @@ function LeaderAttendance() {
   }
 
   if (loadingUsers) return <p className="admin-loading">読み込み中...</p>
+
+  // チームが未設定の場合は案内を表示する
+  if (users.length === 0 && !loadingUsers) return (
+    <div className="admin-attendance">
+      <h2 className="admin-section-title">チーム勤怠承認</h2>
+      <p style={{ color: 'var(--text-muted)', padding: '32px', textAlign: 'center' }}>
+        チームに所属していないか、チームに社員がいません。<br />
+        管理者に「チーム管理」タブでチームへの追加を依頼してください。
+      </p>
+    </div>
+  )
 
   const workingDays = records.filter(r => r.clockIn !== '-').length
 

@@ -13,9 +13,10 @@ import AdminUsers from './components/admin/AdminUsers'
 import AdminAttendance from './components/admin/AdminAttendance'
 import AdminTransport from './components/admin/AdminTransport'
 import AdminPayslip from './components/admin/AdminPayslip'
+import AdminTeams from './components/admin/AdminTeams'
 
 // 管理者タブの種類
-type AdminTab = 'users' | 'attendance' | 'transport' | 'payslip'
+type AdminTab = 'users' | 'teams' | 'attendance' | 'transport' | 'payslip'
 
 function AdminPage() {
   const [tab, setTab] = useState<AdminTab>('users')
@@ -29,6 +30,12 @@ function AdminPage() {
           onClick={() => setTab('users')}
         >
           👥 ユーザー管理
+        </button>
+        <button
+          className={`nav-tab ${tab === 'teams' ? 'nav-tab-active' : ''}`}
+          onClick={() => setTab('teams')}
+        >
+          🏷️ チーム管理
         </button>
         <button
           className={`nav-tab ${tab === 'attendance' ? 'nav-tab-active' : ''}`}
@@ -53,6 +60,7 @@ function AdminPage() {
       {/* タブコンテンツ */}
       <div className="admin-content">
         {tab === 'users'      && <AdminUsers />}
+        {tab === 'teams'      && <AdminTeams />}
         {tab === 'attendance' && <AdminAttendance />}
         {tab === 'transport'  && <AdminTransport />}
         {tab === 'payslip'    && <AdminPayslip />}

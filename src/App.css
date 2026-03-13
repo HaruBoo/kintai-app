@@ -1508,6 +1508,78 @@ tbody tr:nth-child(even) td { background-color: var(--bg-row-even); }
   text-align: center;
 }
 
+/* ===== チーム管理 ===== */
+.team-card {
+  background: var(--bg-container);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.team-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.team-name {
+  font-size: 1rem;
+  font-weight: bold;
+  color: var(--text-heading);
+  flex: 1;
+}
+
+.team-member-count {
+  font-size: 0.8rem;
+  background: var(--border-light);
+  color: var(--text-muted);
+  border-radius: 20px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.team-members {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.team-member-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--bg-row-even);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.team-member-name {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.team-member-role {
+  font-size: 0.75rem;
+  font-weight: bold;
+  border-radius: 20px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+.role-leader   { background: #e3f2fd; color: #1565c0; }
+.role-employee { background: #f0fbfc; color: var(--text-heading); }
+
+.team-add-member {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-light);
+}
+
 /* ===== 提出ページ サマリーカード ===== */
 .submit-summary-card {
   background: var(--bg-row-even);
