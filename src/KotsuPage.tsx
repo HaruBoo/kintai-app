@@ -17,6 +17,9 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
   // データ読み込み中フラグ
   const [loading, setLoading] = useState(true)
 
+  // 提出・承認済みの場合は編集をロックする
+  const [isLocked, setIsLocked] = useState(false)
+
   // フォーム入力値
   const [dateISO,      setDateISO]      = useState(todayISO)
   const [fromInput,    setFromInput]    = useState('')
@@ -93,6 +96,24 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
   useEffect(() => {
     fetchRecords()
   }, [fetchRecords])
+
+  // 提出状態を取得して編集ロックを設定する
+  useEffect(() => {
+    const fetchSubmission = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('attendance_submissions')
+        .select('status')
+        .eq('user_id', user.id)
+        .eq('year', viewYear)
+        .eq('month', viewMonth)
+        .maybeSingle()
+      const s = data?.status ?? 'none'
+      setIsLocked(s === 'submitted' || s === 'leader_approved' || s === 'approved')
+    }
+    fetchSubmission()
+  }, [viewYear, viewMonth])
 
   // 画像ファイルを選択したときの処理
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -257,8 +278,18 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
     <div>
       <h2 className="page-title">交通費申請</h2>
 
-      {/* 入力フォーム */}
-      <div className="kotsu-form">
+      {/* ロック中のメッセージ */}
+      {isLocked && (
+        <div className="submission-panel">
+          <div className="submission-panel-inner submitted">
+            <p className="submission-panel-title">📬 提出済み・編集不可</p>
+            <p className="submission-panel-desc">提出済みのため追加・編集・削除はできません。「提出」タブから取り消せます。</p>
+          </div>
+        </div>
+      )}
+
+      {/* 入力フォーム（提出済みは非表示） */}
+      {!isLocked && <div className="kotsu-form">
 
         {/* 領収書アップロードエリア */}
         <div className="form-row">
@@ -347,6 +378,7 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
         </div>
         <button className="btn-add" onClick={handleAdd}>追加する</button>
       </div>
+      }
 
       {/* 申請一覧テーブル */}
       <div className="table-header">
@@ -382,7 +414,7 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
                 records.map((r, i) => (
                   <tr key={r.id ?? i}>
                     <td>
-                      {editDateIndex === i ? (
+                      {!isLocked && editDateIndex === i ? (
                         <span className="date-edit">
                           <input type="date" className="date-edit-input"
                             value={editDateValue} onChange={e => setEditDateValue(e.target.value)} />
@@ -390,8 +422,12 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
                           <button className="btn-delete-no" onClick={() => setEditDateIndex(null)}>取消</button>
                         </span>
                       ) : (
-                        <span className="editable-cell" onClick={() => handleDateClick(i, r.date)} title="クリックで編集">
-                          {r.date} ✏️
+                        <span
+                          className={!isLocked ? 'editable-cell' : ''}
+                          onClick={!isLocked ? () => handleDateClick(i, r.date) : undefined}
+                          title={!isLocked ? 'クリックで編集' : undefined}
+                        >
+                          {r.date}{!isLocked && ' ✏️'}
                         </span>
                       )}
                     </td>
@@ -423,13 +459,15 @@ function KotsuPage({ viewYear, viewMonth }: Props) {
                       </div>
                     </td>
                     <td>
-                      {deleteConfirmIndex === i ? (
-                        <span className="delete-confirm">
-                          <button className="btn-delete-yes" onClick={() => handleDelete(i)}>はい</button>
-                          <button className="btn-delete-no" onClick={() => setDeleteConfirmIndex(null)}>キャンセル</button>
-                        </span>
-                      ) : (
-                        <button className="btn-delete" onClick={() => setDeleteConfirmIndex(i)}>削除</button>
+                      {!isLocked && (
+                        deleteConfirmIndex === i ? (
+                          <span className="delete-confirm">
+                            <button className="btn-delete-yes" onClick={() => handleDelete(i)}>はい</button>
+                            <button className="btn-delete-no" onClick={() => setDeleteConfirmIndex(null)}>キャンセル</button>
+                          </span>
+                        ) : (
+                          <button className="btn-delete" onClick={() => setDeleteConfirmIndex(i)}>削除</button>
+                        )
                       )}
                     </td>
                   </tr>
